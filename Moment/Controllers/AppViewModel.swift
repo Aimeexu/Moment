@@ -9,6 +9,7 @@ import Foundation
 import SwiftUI
 import SwiftData
 import Combine
+import AVFoundation
 
 enum AppPage: String, CaseIterable {
     case home
@@ -24,7 +25,7 @@ enum RecordTab: String, CaseIterable {
 }
 
 @MainActor
-class AppViewModel: ObservableObject {
+class AppViewModel: NSObject, ObservableObject {
     // MARK: - SwiftData
     var modelContext: ModelContext?
     
@@ -60,6 +61,8 @@ class AppViewModel: ObservableObject {
 
     // MARK: - Recording Timer
     private var recordingTimer: Timer?
+    private var audioRecorder: AVAudioRecorder?
+    private var currentRecordingURL: URL?
 
     var filterOptions: [String] {
         var options = ["全部"]
@@ -78,7 +81,7 @@ class AppViewModel: ObservableObject {
     }
 
     var canSave: Bool {
-        !textContent.isEmpty || isRecording || selectedEmotion != nil
+        !textContent.isEmpty || isRecording || recordingDuration > 0 || selectedEmotion != nil
     }
 
     // MARK: - SwiftData Methods
@@ -138,12 +141,51 @@ class AppViewModel: ObservableObject {
     }
 
     func startRecording() {
-        isRecording = true
-        recordingDuration = 0
-        recordingTimer = Timer.scheduledTimer(withTimeInterval: 1, repeats: true) { [weak self] _ in
-            Task { @MainActor in
-                self?.recordingDuration += 1
+        // 请求录音权限
+        AVAudioSession.sharedInstance().requestRecordPermission { [weak self] allowed in
+            DispatchQueue.main.async {
+                if allowed {
+                    self?.beginRecording()
+                } else {
+                    self?.showToastMessage("需要录音权限")
+                }
             }
+        }
+    }
+    
+    private func beginRecording() {
+        let audioSession = AVAudioSession.sharedInstance()
+        
+        do {
+            try audioSession.setCategory(.playAndRecord, mode: .default)
+            try audioSession.setActive(true)
+            
+            // 创建录音文件URL
+            let documentsPath = FileManager.default.urls(for: .documentDirectory, in: .userDomainMask)[0]
+            let audioFilename = documentsPath.appendingPathComponent("recording_\(UUID().uuidString).m4a")
+            currentRecordingURL = audioFilename
+            
+            // 录音设置
+            let settings = [
+                AVFormatIDKey: Int(kAudioFormatMPEG4AAC),
+                AVSampleRateKey: 12000,
+                AVNumberOfChannelsKey: 1,
+                AVEncoderAudioQualityKey: AVAudioQuality.high.rawValue
+            ]
+            
+            audioRecorder = try AVAudioRecorder(url: audioFilename, settings: settings)
+            audioRecorder?.delegate = self
+            audioRecorder?.record()
+            
+            isRecording = true
+            recordingDuration = 0
+            recordingTimer = Timer.scheduledTimer(withTimeInterval: 1, repeats: true) { [weak self] _ in
+                Task { @MainActor in
+                    self?.recordingDuration += 1
+                }
+            }
+        } catch {
+            showToastMessage("录音失败")
         }
     }
 
@@ -151,6 +193,14 @@ class AppViewModel: ObservableObject {
         isRecording = false
         recordingTimer?.invalidate()
         recordingTimer = nil
+        audioRecorder?.stop()
+        audioRecorder = nil
+        
+        do {
+            try AVAudioSession.sharedInstance().setActive(false)
+        } catch {
+            print("Failed to deactivate audio session: \(error)")
+        }
     }
 
     func saveRecord() {
@@ -161,8 +211,8 @@ class AppViewModel: ObservableObject {
             emotionEmoji: emotion.emoji,
             date: Date(),
             textContent: textContent.isEmpty ? nil : textContent,
-            voiceURLString: isRecording ? "file://voice_\(UUID().uuidString).m4a" : nil,
-            voiceDuration: isRecording ? recordingDuration : nil,
+            voiceURLString: currentRecordingURL?.absoluteString,
+            voiceDuration: recordingDuration > 0 ? recordingDuration : nil,
             imageURLStrings: selectedImages.map { $0.absoluteString },
             bookmarkURLString: bookmarkURL.isEmpty ? nil : bookmarkURL,
             bookmarkTitle: bookmarkTitle.isEmpty ? nil : bookmarkTitle,
@@ -195,6 +245,7 @@ class AppViewModel: ObservableObject {
         selectedImages = []
         bookmarkURL = ""
         bookmarkTitle = ""
+        currentRecordingURL = nil
     }
 
     func showToastMessage(_ message: String) {
@@ -208,5 +259,17 @@ class AppViewModel: ObservableObject {
     func getEmotionFromFilter(_ filter: String) -> String {
         if filter == "全部" { return "全部" }
         return filter.components(separatedBy: " ").last ?? filter
+    }
+}
+
+// MARK: - AVAudioRecorderDelegate
+extension AppViewModel: AVAudioRecorderDelegate {
+    nonisolated func audioRecorderDidFinishRecording(_ recorder: AVAudioRecorder, successfully flag: Bool) {
+        Task { @MainActor in
+            if !flag {
+                showToastMessage("录音失败")
+                currentRecordingURL = nil
+            }
+        }
     }
 }

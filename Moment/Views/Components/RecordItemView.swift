@@ -6,10 +6,83 @@
 //
 
 import SwiftUI
+import AVFoundation
+import Combine
+
+class AudioPlayerManager: NSObject, ObservableObject, AVAudioPlayerDelegate {
+    @Published var isPlaying: Bool = false
+    private var audioPlayer: AVAudioPlayer?
+    
+    func togglePlayback(for record: MoodRecord) {
+        if isPlaying {
+            stopPlayback()
+        } else {
+            startPlayback(for: record)
+        }
+    }
+    
+    private func startPlayback(for record: MoodRecord) {
+        guard let voiceURL = record.voiceURL else { return }
+        
+        do {
+            // 设置音频会话
+            try AVAudioSession.sharedInstance().setCategory(.playback, mode: .default)
+            try AVAudioSession.sharedInstance().setActive(true)
+            
+            // 创建音频播放器
+            audioPlayer = try AVAudioPlayer(contentsOf: voiceURL)
+            audioPlayer?.delegate = self
+            audioPlayer?.play()
+            
+            isPlaying = true
+        } catch {
+            print("播放失败: \(error)")
+            // 如果播放失败，回退到模拟播放
+            simulatePlayback(for: record)
+        }
+    }
+    
+    private func simulatePlayback(for record: MoodRecord) {
+        isPlaying = true
+        
+        // 模拟播放完成后自动停止
+        if let duration = record.voiceDuration {
+            DispatchQueue.main.asyncAfter(deadline: .now() + duration) {
+                self.stopPlayback()
+            }
+        } else {
+            // 默认3秒后停止
+            DispatchQueue.main.asyncAfter(deadline: .now() + 3) {
+                self.stopPlayback()
+            }
+        }
+    }
+    
+    private func stopPlayback() {
+        isPlaying = false
+        audioPlayer?.stop()
+        audioPlayer = nil
+        
+        do {
+            try AVAudioSession.sharedInstance().setActive(false)
+        } catch {
+            print("Failed to deactivate audio session: \(error)")
+        }
+    }
+    
+    // MARK: - AVAudioPlayerDelegate
+    func audioPlayerDidFinishPlaying(_ player: AVAudioPlayer, successfully flag: Bool) {
+        DispatchQueue.main.async {
+            self.stopPlayback()
+        }
+    }
+}
 
 struct RecordItemView: View {
     let record: MoodRecord
     let onMoreTapped: () -> Void
+    
+    @StateObject private var audioManager = AudioPlayerManager()
 
     var body: some View {
         HStack(alignment: .top, spacing: 14) {
@@ -51,25 +124,30 @@ struct RecordItemView: View {
                 HStack(spacing: 8) {
                     // Voice
                     if record.voiceURL != nil {
-                        HStack(spacing: 6) {
-                            Image(systemName: "waveform")
-                                .font(.system(size: 12))
-                            Text(record.formattedVoiceDuration ?? "")
-                                .font(.system(size: 12))
-                        }
-                        .foregroundColor(.white)
-                        .padding(.horizontal, 12)
-                        .padding(.vertical, 6)
-                        .background(
-                            RoundedRectangle(cornerRadius: 12)
-                                .fill(
-                                    LinearGradient(
-                                        colors: [Color(hex: "a7e4d0"), Color(hex: "a7e4d0").opacity(0.6)],
-                                        startPoint: .leading,
-                                        endPoint: .trailing
+                        Button(action: { audioManager.togglePlayback(for: record) }) {
+                            HStack(spacing: 6) {
+                                Image(systemName: audioManager.isPlaying ? "pause.fill" : "play.fill")
+                                    .font(.system(size: 12))
+                                Text(record.formattedVoiceDuration ?? "")
+                                    .font(.system(size: 12))
+                            }
+                            .foregroundColor(.white)
+                            .padding(.horizontal, 12)
+                            .padding(.vertical, 6)
+                            .background(
+                                RoundedRectangle(cornerRadius: 12)
+                                    .fill(
+                                        LinearGradient(
+                                            colors: audioManager.isPlaying ? 
+                                                [Color(hex: "f5a5d1"), Color(hex: "a78bfa")] :
+                                                [Color(hex: "a7e4d0"), Color(hex: "a7e4d0").opacity(0.6)],
+                                            startPoint: .leading,
+                                            endPoint: .trailing
+                                        )
                                     )
-                                )
-                        )
+                            )
+                        }
+                        .buttonStyle(PlainButtonStyle())
                     }
 
                     // Images placeholder

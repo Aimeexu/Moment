@@ -21,7 +21,7 @@ struct RecordView: View {
                 RecordHeaderView(
                     onBack: { viewModel.goHome() },
                     onSave: { viewModel.saveRecord() },
-                    canSave: !viewModel.textContent.isEmpty || viewModel.isRecording
+                    canSave: !viewModel.textContent.isEmpty || viewModel.isRecording || viewModel.recordingDuration > 0
                 )
 
                 // Emotion Show
@@ -264,53 +264,108 @@ struct VoicePanelView: View {
     let isRecording: Bool
     let duration: TimeInterval
     let onToggle: () -> Void
+    
+    @State private var recordedDuration: TimeInterval = 0
+    @State private var hasRecorded: Bool = false
+    @State private var isPressed: Bool = false
 
     var body: some View {
         VStack(spacing: 16) {
-            Button(action: onToggle) {
-                ZStack {
-                    Circle()
-                        .fill(
-                            LinearGradient(
-                                colors: [Color(hex: "f5a5d1"), Color(hex: "f08080")],
-                                startPoint: .topLeading,
-                                endPoint: .bottomTrailing
-                            )
+            ZStack {
+                Circle()
+                    .fill(
+                        LinearGradient(
+                            colors: [Color(hex: "f5a5d1"), Color(hex: "f08080")],
+                            startPoint: .topLeading,
+                            endPoint: .bottomTrailing
                         )
-                        .frame(width: 100, height: 100)
-                        .shadow(
-                            color: Color(hex: "f5a5d1").opacity(isRecording ? 0.35 : 0.25),
-                            radius: isRecording ? 16 : 12,
-                            x: 0,
-                            y: isRecording ? 16 : 8
-                        )
+                    )
+                    .frame(width: 100, height: 100)
+                    .shadow(
+                        color: Color(hex: "f5a5d1").opacity(isRecording ? 0.35 : 0.25),
+                        radius: isRecording ? 16 : 12,
+                        x: 0,
+                        y: isRecording ? 16 : 8
+                    )
 
-                    Image(systemName: isRecording ? "stop.fill" : "mic.fill")
-                        .font(.system(size: 40))
-                        .foregroundColor(.white)
-                }
-                .scaleEffect(isRecording ? 1.1 : 1.0)
-                .animation(
-                    .spring(response: 0.3, dampingFraction: 0.6),
-                    value: isRecording
-                )
+                Image(systemName: isRecording ? "stop.fill" : "mic.fill")
+                    .font(.system(size: 40))
+                    .foregroundColor(.white)
             }
-
-            Text(isRecording ? "录音中..." : "点击开始录音")
-                .font(.system(size: 14, weight: .semibold))
-                .foregroundColor(Color(hex: "8b8b8b"))
+            .scaleEffect(isRecording || isPressed ? 1.1 : 1.0)
+            .animation(
+                .spring(response: 0.3, dampingFraction: 0.6),
+                value: isRecording || isPressed
+            )
+            .gesture(
+                DragGesture(minimumDistance: 0)
+                    .onChanged { _ in
+                        if !isPressed && !isRecording {
+                            isPressed = true
+                            onToggle() // 开始录音
+                        }
+                    }
+                    .onEnded { _ in
+                        if isPressed && isRecording {
+                            isPressed = false
+                            recordedDuration = duration
+                            hasRecorded = true
+                            onToggle() // 停止录音
+                        }
+                    }
+            )
 
             if isRecording {
-                Text(formattedDuration)
-                    .font(.system(size: 40, weight: .light))
-                    .foregroundColor(Color(hex: "a78bfa"))
-                    .tracking(2)
+                VStack(spacing: 8) {
+                    Text("录音中...")
+                        .font(.system(size: 14, weight: .semibold))
+                        .foregroundColor(Color(hex: "8b8b8b"))
+                    
+                    Text(formattedDuration(duration))
+                        .font(.system(size: 32, weight: .light))
+                        .foregroundColor(Color(hex: "a78bfa"))
+                        .tracking(2)
+                }
+            } else if hasRecorded && recordedDuration > 0 {
+                VStack(spacing: 8) {
+                    Text("录音完成")
+                        .font(.system(size: 14, weight: .semibold))
+                        .foregroundColor(Color(hex: "5a5a5a"))
+                    
+                    HStack(spacing: 6) {
+                        Image(systemName: "waveform")
+                            .font(.system(size: 16))
+                            .foregroundColor(Color(hex: "a78bfa"))
+                        
+                        Text(formattedDuration(recordedDuration))
+                            .font(.system(size: 18, weight: .medium))
+                            .foregroundColor(Color(hex: "a78bfa"))
+                    }
+                    .padding(.horizontal, 16)
+                    .padding(.vertical, 8)
+                    .background(
+                        Capsule()
+                            .fill(Color(hex: "a78bfa").opacity(0.1))
+                    )
+                }
+            } else {
+                Text("长按开始录音")
+                    .font(.system(size: 14, weight: .semibold))
+                    .foregroundColor(Color(hex: "8b8b8b"))
             }
         }
         .padding(.vertical, 24)
+        .onChange(of: duration) { newDuration in
+            if !isRecording && newDuration == 0 {
+                // 重置状态
+                recordedDuration = 0
+                hasRecorded = false
+                isPressed = false
+            }
+        }
     }
 
-    var formattedDuration: String {
+    private func formattedDuration(_ duration: TimeInterval) -> String {
         let minutes = Int(duration) / 60
         let seconds = Int(duration) % 60
         return String(format: "%02d:%02d", minutes, seconds)
