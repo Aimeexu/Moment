@@ -6,6 +6,8 @@
 //
 
 import SwiftUI
+import PhotosUI
+import UIKit
 
 struct RecordView: View {
     @ObservedObject var viewModel: AppViewModel
@@ -81,6 +83,7 @@ struct RecordView: View {
                     isRecording: viewModel.isRecording,
                     recordingDuration: viewModel.recordingDuration,
                     textContent: $viewModel.textContent,
+                    viewModel: viewModel,
                     onRecordToggle: {
                         if viewModel.isRecording {
                             viewModel.stopRecording()
@@ -216,6 +219,7 @@ struct RecordInputPanel: View {
     let isRecording: Bool
     let recordingDuration: TimeInterval
     @Binding var textContent: String
+    let viewModel: AppViewModel
     let onRecordToggle: () -> Void
 
     var body: some View {
@@ -230,7 +234,7 @@ struct RecordInputPanel: View {
             case .text:
                 TextPanelView(textContent: $textContent)
             case .image:
-                ImagePanelView()
+                ImagePanelView(viewModel: viewModel)
             }
         }
         .padding(.horizontal, 20)
@@ -355,7 +359,7 @@ struct VoicePanelView: View {
             }
         }
         .padding(.vertical, 24)
-        .onChange(of: duration) { newDuration in
+        .onChange(of: duration) { oldValue, newDuration in
             if !isRecording && newDuration == 0 {
                 // 重置状态
                 recordedDuration = 0
@@ -416,34 +420,243 @@ struct TextPanelView: View {
 }
 
 struct ImagePanelView: View {
+    @ObservedObject var viewModel: AppViewModel
     @State private var showToast: Bool = false
+    @State private var showImagePicker: Bool = false
+    @State private var showActionSheet: Bool = false
+    @State private var sourceType: UIImagePickerController.SourceType = .photoLibrary
 
     var body: some View {
         VStack(spacing: 16) {
-            Button(action: { showToast = true }) {
-                VStack(spacing: 16) {
-                    Image(systemName: "plus")
-                        .font(.system(size: 48))
-                        .foregroundColor(Color(hex: "a7e4d0"))
+            if viewModel.selectedImages.isEmpty {
+                // 空状态 - 显示添加按钮
+                Button(action: { showActionSheet = true }) {
+                    VStack(spacing: 16) {
+                        Image(systemName: "plus")
+                            .font(.system(size: 48))
+                            .foregroundColor(Color(hex: "a7e4d0"))
 
-                    Text("点击")
-                        .foregroundColor(Color(hex: "a78bfa"))
-                    + Text("上传图片")
-                        .foregroundColor(Color(hex: "8b8b8b"))
+                        VStack(spacing: 4) {
+                            Text("点击添加图片")
+                                .font(.system(size: 12))
+                                .foregroundColor(Color(hex: "8b8b8b"))
+                            
+                            Text("支持相册选择或拍照")
+                                .font(.system(size: 12))
+                                .foregroundColor(Color(hex: "b8b8b8"))
+                        }
+                    }
+                    .frame(maxWidth: .infinity)
+                    .padding(.vertical, 50)
+                    .background(
+                        RoundedRectangle(cornerRadius: 20)
+                            .strokeBorder(
+                                Color(hex: "a78bfa").opacity(0.3),
+                                style: StrokeStyle(lineWidth: 2, dash: [8])
+                            )
+                    )
                 }
-                .frame(maxWidth: .infinity)
-                .padding(.vertical, 50)
-                .background(
-                    RoundedRectangle(cornerRadius: 20)
-                        .strokeBorder(
-                            Color(hex: "a78bfa").opacity(0.3),
-                            style: StrokeStyle(lineWidth: 2, dash: [8])
-                        )
-                )
+                .buttonStyle(PlainButtonStyle())
+            } else {
+                // 已选择图片状态
+                VStack(spacing: 12) {
+                    // 图片网格
+                    LazyVGrid(columns: Array(repeating: GridItem(.flexible(), spacing: 8), count: 3), spacing: 8) {
+                        ForEach(Array(viewModel.selectedImages.enumerated()), id: \.offset) { index, imageURL in
+                            ImageThumbnailView(
+                                imageURL: imageURL,
+                                onRemove: {
+                                    viewModel.removeImage(at: index)
+                                }
+                            )
+                        }
+                        
+                        // 添加更多图片按钮
+                        if viewModel.selectedImages.count < 9 {
+                            Button(action: { showActionSheet = true }) {
+                                RoundedRectangle(cornerRadius: 12)
+                                    .strokeBorder(
+                                        Color(hex: "a78bfa").opacity(0.3),
+                                        style: StrokeStyle(lineWidth: 1, dash: [4])
+                                    )
+                                    .frame(height: 80)
+                                    .overlay(
+                                        Image(systemName: "plus")
+                                            .font(.system(size: 24))
+                                            .foregroundColor(Color(hex: "a78bfa").opacity(0.6))
+                                    )
+                            }
+                            .buttonStyle(PlainButtonStyle())
+                        }
+                    }
+                    
+                    // 图片数量提示
+                    HStack {
+                        Text("已选择 \(viewModel.selectedImages.count) 张图片")
+                            .font(.system(size: 12))
+                            .foregroundColor(Color(hex: "8b8b8b"))
+                        
+                        Spacer()
+                        
+                        if viewModel.selectedImages.count >= 9 {
+                            Text("最多9张")
+                                .font(.system(size: 12))
+                                .foregroundColor(Color(hex: "f5a5d1"))
+                        }
+                    }
+                }
             }
-            .buttonStyle(PlainButtonStyle())
         }
-        .toast(isShowing: $showToast, message: "上传图片")
+        .actionSheet(isPresented: $showActionSheet) {
+            ActionSheet(
+                title: Text("选择图片"),
+                buttons: [
+                    .default(Text("📷 拍照")) {
+                        if UIImagePickerController.isSourceTypeAvailable(.camera) {
+                            sourceType = .camera
+                            showImagePicker = true
+                        } else {
+                            showToastMessage("相机不可用")
+                        }
+                    },
+                    .default(Text("🖼️ 从相册选择")) {
+                        sourceType = .photoLibrary
+                        showImagePicker = true
+                    },
+                    .cancel(Text("取消"))
+                ]
+            )
+        }
+        .sheet(isPresented: $showImagePicker) {
+            ImagePickerView(
+                sourceType: sourceType,
+                onImageSelected: { image in
+                    saveImageAndAddToSelection(image)
+                }
+            )
+        }
+        .toast(isShowing: $showToast, message: "图片已添加")
+    }
+    
+    private func saveImageAndAddToSelection(_ image: UIImage) {
+        // 保存图片到文档目录
+        guard let imageData = image.jpegData(compressionQuality: 0.8) else {
+            showToastMessage("图片处理失败")
+            return
+        }
+        
+        let documentsPath = FileManager.default.urls(for: .documentDirectory, in: .userDomainMask)[0]
+        let imageURL = documentsPath.appendingPathComponent("image_\(UUID().uuidString).jpg")
+        
+        do {
+            try imageData.write(to: imageURL)
+            viewModel.addImage(imageURL)
+            showToastMessage("图片已添加")
+        } catch {
+            print("Failed to save image: \(error)")
+            showToastMessage("图片保存失败")
+        }
+    }
+    
+    private func showToastMessage(_ message: String) {
+        // 这里可以通过viewModel显示toast，或者使用本地状态
+        // 为了简化，我们使用本地toast状态
+        showToast = true
+    }
+}
+
+// 图片缩略图视图
+struct ImageThumbnailView: View {
+    let imageURL: URL
+    let onRemove: () -> Void
+    @State private var image: UIImage?
+    
+    var body: some View {
+        ZStack(alignment: .topTrailing) {
+            RoundedRectangle(cornerRadius: 12)
+                .fill(Color(hex: "f5f5f5"))
+                .frame(height: 80)
+                .overlay(
+                    Group {
+                        if let image = image {
+                            Image(uiImage: image)
+                                .resizable()
+                                .aspectRatio(contentMode: .fill)
+                                .clipped()
+                        } else {
+                            ProgressView()
+                                .scaleEffect(0.8)
+                        }
+                    }
+                )
+                .clipShape(RoundedRectangle(cornerRadius: 12))
+            
+            // 删除按钮
+            Button(action: onRemove) {
+                Image(systemName: "xmark.circle.fill")
+                    .font(.system(size: 20))
+                    .foregroundColor(.white)
+                    .background(
+                        Circle()
+                            .fill(Color.black.opacity(0.6))
+                            .frame(width: 20, height: 20)
+                    )
+            }
+            .offset(x: 6, y: -6)
+        }
+        .onAppear {
+            loadImage()
+        }
+    }
+    
+    private func loadImage() {
+        DispatchQueue.global(qos: .userInitiated).async {
+            if let imageData = try? Data(contentsOf: imageURL),
+               let uiImage = UIImage(data: imageData) {
+                DispatchQueue.main.async {
+                    self.image = uiImage
+                }
+            }
+        }
+    }
+}
+
+// UIImagePickerController 包装器
+struct ImagePickerView: UIViewControllerRepresentable {
+    let sourceType: UIImagePickerController.SourceType
+    let onImageSelected: (UIImage) -> Void
+    @Environment(\.presentationMode) var presentationMode
+    
+    func makeUIViewController(context: Context) -> UIImagePickerController {
+        let picker = UIImagePickerController()
+        picker.sourceType = sourceType
+        picker.delegate = context.coordinator
+        return picker
+    }
+    
+    func updateUIViewController(_ uiViewController: UIImagePickerController, context: Context) {}
+    
+    func makeCoordinator() -> Coordinator {
+        Coordinator(self)
+    }
+    
+    class Coordinator: NSObject, UIImagePickerControllerDelegate, UINavigationControllerDelegate {
+        let parent: ImagePickerView
+        
+        init(_ parent: ImagePickerView) {
+            self.parent = parent
+        }
+        
+        func imagePickerController(_ picker: UIImagePickerController, didFinishPickingMediaWithInfo info: [UIImagePickerController.InfoKey : Any]) {
+            if let image = info[.originalImage] as? UIImage {
+                parent.onImageSelected(image)
+            }
+            parent.presentationMode.wrappedValue.dismiss()
+        }
+        
+        func imagePickerControllerDidCancel(_ picker: UIImagePickerController) {
+            parent.presentationMode.wrappedValue.dismiss()
+        }
     }
 }
 

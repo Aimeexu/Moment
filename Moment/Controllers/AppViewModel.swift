@@ -81,7 +81,7 @@ class AppViewModel: NSObject, ObservableObject {
     }
 
     var canSave: Bool {
-        !textContent.isEmpty || isRecording || recordingDuration > 0 || selectedEmotion != nil
+        !textContent.isEmpty || isRecording || recordingDuration > 0 || !selectedImages.isEmpty || selectedEmotion != nil
     }
 
     // MARK: - SwiftData Methods
@@ -105,7 +105,32 @@ class AppViewModel: NSObject, ObservableObject {
         }
     }
 
+    // MARK: - Image Management
+    
+    func addImage(_ imageURL: URL) {
+        if selectedImages.count < 9 {
+            selectedImages.append(imageURL)
+        }
+    }
+    
+    func removeImage(at index: Int) {
+        guard index < selectedImages.count else { return }
+        let imageURL = selectedImages[index]
+        selectedImages.remove(at: index)
+        
+        // 删除文件
+        try? FileManager.default.removeItem(at: imageURL)
+    }
+    
+    func clearImages() {
+        // 删除所有图片文件
+        for imageURL in selectedImages {
+            try? FileManager.default.removeItem(at: imageURL)
+        }
+        selectedImages.removeAll()
+    }
     // MARK: - Actions
+    
     func selectEmotion(_ emotion: Emotion) {
         selectedEmotion = emotion
         currentPage = .record
@@ -242,7 +267,7 @@ class AppViewModel: NSObject, ObservableObject {
         selectedTags = []
         isRecording = false
         recordingDuration = 0
-        selectedImages = []
+        clearImages() // Clear images and delete files
         bookmarkURL = ""
         bookmarkTitle = ""
         currentRecordingURL = nil
