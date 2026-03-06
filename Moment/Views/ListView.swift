@@ -65,7 +65,7 @@ struct ListView: View {
                             ))
                         }
                     }
-                    .padding(.horizontal, 20)
+                    .padding(.horizontal, 16)
                     .padding(.bottom, 100)
                 }
             }

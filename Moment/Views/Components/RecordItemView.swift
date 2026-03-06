@@ -97,6 +97,8 @@ struct RecordItemView: View {
                     }
                 }
             }
+            
+            Spacer()
 
             // More button
             Button(action: onMoreTapped) {
