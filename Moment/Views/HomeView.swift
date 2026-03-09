@@ -43,7 +43,7 @@ struct HomeView: View {
                         .padding(.vertical, 20)
                         .background(
                             RoundedRectangle(cornerRadius: 25)
-                                .fill(Color.white.opacity(0.9))
+                                .fill(Color(hex: "E8F5E8"))
                                 .shadow(
                                     color: Color.black.opacity(0.05),
                                     radius: 8,

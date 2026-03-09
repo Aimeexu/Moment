@@ -14,22 +14,16 @@ struct TagItemView: View {
 
     var body: some View {
         Button(action: action) {
-            HStack(spacing: 4) {
+            HStack(spacing: 6) {
                 Text(tag.icon)
+                    .font(.system(size: 14))
                 Text(tag.name)
+                    .font(.system(size: 14, weight: .medium))
             }
-            .font(.system(size: 12, weight: .semibold))
-            .foregroundColor(isSelected ? .white : Color(hex: "8b8b8b"))
-            .padding(.horizontal, 14)
-            .padding(.vertical, 8)
+            .foregroundColor(isSelected ? .white : Color(hex: "6b7280"))
+            .padding(.horizontal, 16)
+            .padding(.vertical, 10)
             .background(backgroundView)
-            .overlay(
-                RoundedRectangle(cornerRadius: 16)
-                    .stroke(
-                        isSelected ? Color.clear : Color(hex: "a78bfa").opacity(0.2),
-                        lineWidth: 1
-                    )
-            )
         }
         .buttonStyle(PlainButtonStyle())
     }
@@ -37,17 +31,33 @@ struct TagItemView: View {
     @ViewBuilder
     private var backgroundView: some View {
         if isSelected {
-            RoundedRectangle(cornerRadius: 16)
+            RoundedRectangle(cornerRadius: 20)
                 .fill(
                     LinearGradient(
-                        colors: [Color(hex: "a78bfa"), Color(hex: "f5a5d1")],
+                        colors: [Color(hex: "f472b6"), Color(hex: "ec4899")],
                         startPoint: .leading,
                         endPoint: .trailing
                     )
                 )
+                .shadow(
+                    color: Color(hex: "f472b6").opacity(0.3),
+                    radius: 8,
+                    x: 0,
+                    y: 4
+                )
         } else {
-            RoundedRectangle(cornerRadius: 16)
-                .fill(Color.white.opacity(0.6))
+            RoundedRectangle(cornerRadius: 20)
+                .fill(Color.white)
+                .overlay(
+                    RoundedRectangle(cornerRadius: 20)
+                        .stroke(Color(hex: "e5e7eb"), lineWidth: 1)
+                )
+                .shadow(
+                    color: Color.black.opacity(0.05),
+                    radius: 4,
+                    x: 0,
+                    y: 2
+                )
         }
     }
 }

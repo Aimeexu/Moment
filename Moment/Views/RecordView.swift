@@ -14,99 +14,212 @@ struct RecordView: View {
 
     var body: some View {
         ZStack {
-            // Background
+            // Background with soft gradient
+            LinearGradient(
+                colors: [
+                    Color(hex: "fef7ed"),
+                    Color(hex: "f0fdf4"),
+                    Color(hex: "eff6ff")
+                ],
+                startPoint: .topLeading,
+                endPoint: .bottomTrailing
+            )
+            .ignoresSafeArea()
+            
+            // Subtle decorative elements
             BackgroundDecorations()
                 .ignoresSafeArea()
 
-            VStack(spacing: 0) {
-                // Header
-                RecordHeaderView(
-                    onBack: { viewModel.goHome() },
-                    onSave: { viewModel.saveRecord() },
-                    canSave: viewModel.canSave
-                )
+            ScrollView {
+                VStack(spacing: 0) {
+                    // Header
+                    RecordHeaderView(
+                        onBack: { viewModel.goHome() },
+                        onSave: { viewModel.saveRecord() },
+                        canSave: viewModel.canSave
+                    )
 
-                // Emotion Show
-                if let emotion = viewModel.selectedEmotion {
-                    VStack(spacing: 20) {
-                        // Icon
-                        RoundedRectangle(cornerRadius: 30)
-                            .fill(
-                                LinearGradient(
-                                    colors: [
-                                        Color(hex: "a78bfa").opacity(0.15),
-                                        Color(hex: "f5a5d1").opacity(0.15)
-                                    ],
-                                    startPoint: .topLeading,
-                                    endPoint: .bottomTrailing
+                    // Emotion Show
+                    if let emotion = viewModel.selectedEmotion {
+                        VStack(spacing: 16) {
+                            // Character Container - 缩小尺寸
+                            RoundedRectangle(cornerRadius: 24)
+                                .fill(
+                                    LinearGradient(
+                                        colors: [
+                                            Color.white.opacity(0.9),
+                                            Color(hex: "f8fafc").opacity(0.8)
+                                        ],
+                                        startPoint: .topLeading,
+                                        endPoint: .bottomTrailing
+                                    )
                                 )
-                            )
-                            .frame(width: 200, height: 200)
-                            .overlay(
-                                Text(emotion.emoji)
-                                    .font(.system(size: 100))
-                            )
-                            .shadow(
-                                color: Color(hex: "a78bfa").opacity(0.12),
-                                radius: 12,
-                                x: 0,
-                                y: 8
-                            )
+                                .frame(width: 160, height: 160)
+                                .overlay(
+                                    // Character Image or Emoji
+                                    Group {
+                                        if let image = UIImage(named: emotion.imageName) {
+                                            Image(uiImage: image)
+                                                .resizable()
+                                                .aspectRatio(contentMode: .fit)
+                                                .frame(width: 120, height: 120)
+                                        } else {
+                                            // Cute character design fallback
+                                            ZStack {
+                                                // Character body
+                                                Circle()
+                                                    .fill(
+                                                        LinearGradient(
+                                                            colors: [
+                                                                Color(hex: "fef3e2"),
+                                                                Color(hex: "fde68a")
+                                                            ],
+                                                            startPoint: .top,
+                                                            endPoint: .bottom
+                                                        )
+                                                    )
+                                                    .frame(width: 90, height: 90)
+                                                
+                                                // Character face
+                                                VStack(spacing: 6) {
+                                                    // Eyes
+                                                    HStack(spacing: 12) {
+                                                        Circle()
+                                                            .fill(Color.black)
+                                                            .frame(width: 6, height: 6)
+                                                        Circle()
+                                                            .fill(Color.black)
+                                                            .frame(width: 6, height: 6)
+                                                    }
+                                                    
+                                                    // Mouth based on emotion
+                                                    emotionMouth(for: emotion.name)
+                                                }
+                                                .offset(y: -6)
+                                                
+                                                // Character details (like the red crest in image)
+                                                if emotion.name == "Happy" {
+                                                    Ellipse()
+                                                        .fill(Color(hex: "f87171"))
+                                                        .frame(width: 18, height: 12)
+                                                        .offset(y: -50)
+                                                }
+                                            }
+                                        }
+                                    }
+                                )
+                                .shadow(
+                                    color: Color.black.opacity(0.08),
+                                    radius: 12,
+                                    x: 0,
+                                    y: 6
+                                )
 
-                        // Label
-                        Text(emotion.name)
-                            .font(.system(size: 18, weight: .bold))
-                            .foregroundColor(Color(hex: "a78bfa"))
-                            .padding(.horizontal, 28)
-                            .padding(.vertical, 12)
-                            .background(
-                                Capsule()
-                                    .fill(Color(hex: "a78bfa").opacity(0.1))
-                            )
-                            .overlay(
-                                Capsule()
-                                    .stroke(Color(hex: "a78bfa").opacity(0.3), lineWidth: 1)
-                            )
-                    }
-                    .padding(.vertical, 40)
-                }
-
-                // Tabs
-                RecordTabsView(
-                    selectedTab: viewModel.recordTab,
-                    onSelect: { viewModel.switchTab($0) }
-                )
-
-                // Input Panel
-                RecordInputPanel(
-                    selectedTab: viewModel.recordTab,
-                    isRecording: viewModel.isRecording,
-                    recordingDuration: viewModel.recordingDuration,
-                    textContent: $viewModel.textContent,
-                    viewModel: viewModel,
-                    onRecordToggle: {
-                        if viewModel.isRecording {
-                            viewModel.stopRecording()
-                        } else {
-                            viewModel.startRecording()
+                            // Emotion Label
+                            Text(emotion.name)
+                                .font(.system(size: 18, weight: .bold))
+                                .foregroundColor(Color(hex: "374151"))
                         }
+                        .padding(.vertical, 20)
                     }
-                )
 
-                // Tags
-                TagsAreaView(
-                    tags: viewModel.availableTags,
-                    selectedTags: viewModel.selectedTags,
-                    onTagToggle: { viewModel.toggleTag($0) }
-                )
+                    // Tabs
+                    RecordTabsView(
+                        selectedTab: viewModel.recordTab,
+                        onSelect: { viewModel.switchTab($0) }
+                    )
 
-                Spacer(minLength: 80)
+                    // Input Panel
+                    RecordInputPanel(
+                        selectedTab: viewModel.recordTab,
+                        isRecording: viewModel.isRecording,
+                        recordingDuration: viewModel.recordingDuration,
+                        textContent: $viewModel.textContent,
+                        viewModel: viewModel,
+                        onRecordToggle: {
+                            if viewModel.isRecording {
+                                viewModel.stopRecording()
+                            } else {
+                                viewModel.startRecording()
+                            }
+                        }
+                    )
+
+                    // Tags
+                    TagsAreaView(
+                        tags: viewModel.availableTags,
+                        selectedTags: viewModel.selectedTags,
+                        onTagToggle: { viewModel.toggleTag($0) }
+                    )
+                    
+                    // 底部安全区域
+                    Spacer()
+                        .frame(height: 100)
+                }
             }
+            .scrollIndicators(.hidden)
+        }
+        .safeAreaInset(edge: .top, spacing: 0) {
+            // 确保顶部有足够的安全区域
+            Color.clear.frame(height: 0)
         }
         .transition(.asymmetric(
             insertion: .opacity.combined(with: .move(edge: .leading)),
             removal: .opacity.combined(with: .move(edge: .trailing))
         ))
+    }
+    
+    // Helper function to create emotion-specific mouth
+    @ViewBuilder
+    private func emotionMouth(for emotionName: String) -> some View {
+        switch emotionName.lowercased() {
+        case "happy", "loved", "proud":
+            // Happy smile
+            Arc(startAngle: .degrees(0), endAngle: .degrees(180), clockwise: false)
+                .stroke(Color.black, lineWidth: 2)
+                .frame(width: 16, height: 8)
+        case "sad", "down":
+            // Sad frown
+            Arc(startAngle: .degrees(180), endAngle: .degrees(360), clockwise: false)
+                .stroke(Color.black, lineWidth: 2)
+                .frame(width: 16, height: 8)
+        case "angry":
+            // Angry line
+            Rectangle()
+                .fill(Color.black)
+                .frame(width: 12, height: 2)
+        case "anxious", "tired":
+            // Wavy mouth
+            Path { path in
+                path.move(to: CGPoint(x: 0, y: 4))
+                path.addQuadCurve(to: CGPoint(x: 8, y: 4), control: CGPoint(x: 4, y: 0))
+                path.addQuadCurve(to: CGPoint(x: 16, y: 4), control: CGPoint(x: 12, y: 8))
+            }
+            .stroke(Color.black, lineWidth: 2)
+            .frame(width: 16, height: 8)
+        default:
+            // Neutral mouth
+            Ellipse()
+                .fill(Color.black)
+                .frame(width: 8, height: 4)
+        }
+    }
+}
+
+// Arc shape for mouth
+struct Arc: Shape {
+    var startAngle: Angle
+    var endAngle: Angle
+    var clockwise: Bool
+
+    func path(in rect: CGRect) -> Path {
+        var path = Path()
+        path.addArc(center: CGPoint(x: rect.midX, y: rect.midY), 
+                   radius: rect.width / 2, 
+                   startAngle: startAngle, 
+                   endAngle: endAngle, 
+                   clockwise: clockwise)
+        return path
     }
 }
 
@@ -119,51 +232,57 @@ struct RecordHeaderView: View {
         HStack {
             // Back Button
             Button(action: onBack) {
-                HStack(spacing: 0) {
-                    Image(systemName: "chevron.left")
-                        .font(.system(size: 18, weight: .semibold))
-                }
-                .frame(width: 40, height: 40)
-                .background(Color(hex: "a78bfa").opacity(0.1))
-                .clipShape(RoundedRectangle(cornerRadius: 12))
-                .foregroundColor(Color(hex: "a78bfa"))
+                Image(systemName: "chevron.left")
+                    .font(.system(size: 18, weight: .semibold))
+                    .foregroundColor(Color(hex: "374151"))
+                    .frame(width: 44, height: 44)
             }
 
             Spacer()
 
+            // Title with rounded background
             Text("记录此刻心情")
-                .font(.system(size: 15, weight: .semibold))
-                .foregroundColor(Color(hex: "333333"))
+                .font(.system(size: 16, weight: .medium))
+                .foregroundColor(Color(hex: "374151"))
+                .padding(.horizontal, 20)
+                .padding(.vertical, 8)
+                .background(
+                    RoundedRectangle(cornerRadius: 20)
+                        .fill(Color.white.opacity(0.8))
+                        .shadow(
+                            color: Color.black.opacity(0.05),
+                            radius: 4,
+                            x: 0,
+                            y: 2
+                        )
+                )
 
             Spacer()
 
-            // Save Button
+            // Save Button - 灰色样式
             Button(action: onSave) {
                 Text("保存")
-                    .font(.system(size: 13, weight: .semibold))
-                    .foregroundColor(.white)
-                    .padding(.horizontal, 20)
-                    .padding(.vertical, 10)
+                    .font(.system(size: 15, weight: .medium))
+                    .foregroundColor(canSave ? Color(hex: "374151") : Color(hex: "9ca3af"))
+                    .padding(.horizontal, 16)
+                    .padding(.vertical, 8)
                     .background(
-                        LinearGradient(
-                            colors: [Color(hex: "a78bfa"), Color(hex: "f5a5d1")],
-                            startPoint: .leading,
-                            endPoint: .trailing
-                        )
+                        RoundedRectangle(cornerRadius: 20)
+                            .fill(canSave ? Color.white.opacity(0.9) : Color.white.opacity(0.5))
+                            .shadow(
+                                color: Color.black.opacity(canSave ? 0.05 : 0.02),
+                                radius: canSave ? 4 : 2,
+                                x: 0,
+                                y: canSave ? 2 : 1
+                            )
                     )
-                    .clipShape(RoundedRectangle(cornerRadius: 12))
-                    .opacity(canSave ? 1 : 0.5)
             }
             .disabled(!canSave)
+            .animation(.easeInOut(duration: 0.2), value: canSave)
         }
         .padding(.horizontal, 20)
-        .padding(.top, 50)
+        .padding(.top, 10)
         .padding(.bottom, 16)
-        .background(
-            Rectangle()
-                .fill(Color.white.opacity(0.95))
-                .background(.ultraThinMaterial)
-        )
     }
 }
 
@@ -172,28 +291,23 @@ struct RecordTabsView: View {
     let onSelect: (RecordTab) -> Void
 
     var body: some View {
-        HStack(spacing: 8) {
+        HStack(spacing: 0) {
             ForEach(RecordTab.allCases, id: \.self) { tab in
                 Button(action: { onSelect(tab) }) {
                     Text(tabTitle(for: tab))
-                        .font(.system(size: 13, weight: .semibold))
-                        .foregroundColor(selectedTab == tab ? Color(hex: "a78bfa") : Color(hex: "b8b8b8"))
+                        .font(.system(size: 15, weight: .medium))
+                        .foregroundColor(selectedTab == tab ? Color(hex: "374151") : Color(hex: "9ca3af"))
                         .frame(maxWidth: .infinity)
-                        .padding(.vertical, 12)
+                        .padding(.vertical, 16)
                         .background(
                             VStack {
                                 Spacer()
                                 if selectedTab == tab {
                                     Rectangle()
-                                        .fill(
-                                            LinearGradient(
-                                                colors: [Color(hex: "a78bfa"), Color(hex: "f5a5d1")],
-                                                startPoint: .leading,
-                                                endPoint: .trailing
-                                            )
-                                        )
-                                        .frame(height: 2)
+                                        .fill(Color(hex: "f472b6"))
+                                        .frame(height: 3)
                                         .clipShape(Capsule())
+                                        .transition(.scale.combined(with: .opacity))
                                 }
                             }
                         )
@@ -202,14 +316,14 @@ struct RecordTabsView: View {
             }
         }
         .padding(.horizontal, 20)
-        .padding(.top, 20)
+        .animation(.spring(response: 0.3, dampingFraction: 0.8), value: selectedTab)
     }
 
     private func tabTitle(for tab: RecordTab) -> String {
         switch tab {
-        case .voice: return "🎵 语音"
-        case .text: return "✍️ 文字"
-        case .image: return "🖼️ 图片"
+        case .voice: return "语音"
+        case .text: return "文字"
+        case .image: return "图片"
         }
     }
 }
@@ -238,25 +352,7 @@ struct RecordInputPanel: View {
             }
         }
         .padding(.horizontal, 20)
-        .padding(.vertical, 16)
-        .background(
-            RoundedRectangle(cornerRadius: 24)
-                .fill(
-                    LinearGradient(
-                        colors: [
-                            Color(hex: "a78bfa").opacity(0.06),
-                            Color(hex: "f5a5d1").opacity(0.06)
-                        ],
-                        startPoint: .topLeading,
-                        endPoint: .bottomTrailing
-                    )
-                )
-        )
-        .overlay(
-            RoundedRectangle(cornerRadius: 24)
-                .stroke(Color(hex: "a78bfa").opacity(0.1), lineWidth: 1)
-        )
-        .padding(.horizontal, 20)
+        .padding(.top, 16)
         .onTapGesture {
             // 点击空白区域收回键盘
             UIApplication.shared.sendAction(#selector(UIResponder.resignFirstResponder), to: nil, from: nil, for: nil)
@@ -276,29 +372,52 @@ struct VoicePanelView: View {
     var body: some View {
         VStack(spacing: 16) {
             ZStack {
+                // Outer glow effect when recording - 缩小尺寸
+                if isRecording {
+                    Circle()
+                        .fill(
+                            RadialGradient(
+                                colors: [
+                                    Color(hex: "f472b6").opacity(0.3),
+                                    Color.clear
+                                ],
+                                center: .center,
+                                startRadius: 35,
+                                endRadius: 55
+                            )
+                        )
+                        .frame(width: 110, height: 110)
+                        .scaleEffect(isRecording ? 1.1 : 1.0)
+                        .animation(.easeInOut(duration: 1.0).repeatForever(autoreverses: true), value: isRecording)
+                }
+                
+                // Main recording button - 缩小尺寸
                 Circle()
                     .fill(
                         LinearGradient(
-                            colors: [Color(hex: "f5a5d1"), Color(hex: "f08080")],
+                            colors: [
+                                Color(hex: "f472b6"),
+                                Color(hex: "ec4899")
+                            ],
                             startPoint: .topLeading,
                             endPoint: .bottomTrailing
                         )
                     )
-                    .frame(width: 100, height: 100)
+                    .frame(width: 80, height: 80)
                     .shadow(
-                        color: Color(hex: "f5a5d1").opacity(isRecording ? 0.35 : 0.25),
-                        radius: isRecording ? 16 : 12,
+                        color: Color(hex: "f472b6").opacity(0.4),
+                        radius: isRecording ? 16 : 8,
                         x: 0,
-                        y: isRecording ? 16 : 8
+                        y: isRecording ? 8 : 4
                     )
 
                 Image(systemName: isRecording ? "stop.fill" : "mic.fill")
-                    .font(.system(size: 40))
+                    .font(.system(size: 28, weight: .medium))
                     .foregroundColor(.white)
             }
-            .scaleEffect(isRecording || isPressed ? 1.1 : 1.0)
+            .scaleEffect(isRecording || isPressed ? 1.05 : 1.0)
             .animation(
-                .spring(response: 0.3, dampingFraction: 0.6),
+                .spring(response: 0.3, dampingFraction: 0.7),
                 value: isRecording || isPressed
             )
             .gesture(
@@ -321,44 +440,68 @@ struct VoicePanelView: View {
 
             if isRecording {
                 VStack(spacing: 8) {
-                    Text("录音中...")
-                        .font(.system(size: 14, weight: .semibold))
-                        .foregroundColor(Color(hex: "8b8b8b"))
+                    // Recording indicator with animated dots
+                    HStack(spacing: 4) {
+                        Text("录音中")
+                            .font(.system(size: 14, weight: .medium))
+                            .foregroundColor(Color(hex: "6b7280"))
+                        
+                        HStack(spacing: 2) {
+                            ForEach(0..<3) { index in
+                                Circle()
+                                    .fill(Color(hex: "f472b6"))
+                                    .frame(width: 3, height: 3)
+                                    .scaleEffect(isRecording ? 1.0 : 0.5)
+                                    .animation(
+                                        .easeInOut(duration: 0.6)
+                                        .repeatForever()
+                                        .delay(Double(index) * 0.2),
+                                        value: isRecording
+                                    )
+                            }
+                        }
+                    }
                     
                     Text(formattedDuration(duration))
-                        .font(.system(size: 32, weight: .light))
-                        .foregroundColor(Color(hex: "a78bfa"))
-                        .tracking(2)
+                        .font(.system(size: 20, weight: .light, design: .monospaced))
+                        .foregroundColor(Color(hex: "f472b6"))
+                        .tracking(1)
                 }
             } else if hasRecorded && recordedDuration > 0 {
                 VStack(spacing: 8) {
-                    Text("录音完成")
-                        .font(.system(size: 14, weight: .semibold))
-                        .foregroundColor(Color(hex: "5a5a5a"))
+                    HStack(spacing: 6) {
+                        Image(systemName: "checkmark.circle.fill")
+                            .font(.system(size: 14))
+                            .foregroundColor(Color(hex: "10b981"))
+                        
+                        Text("录音完成")
+                            .font(.system(size: 14, weight: .medium))
+                            .foregroundColor(Color(hex: "374151"))
+                    }
                     
                     HStack(spacing: 6) {
                         Image(systemName: "waveform")
-                            .font(.system(size: 16))
-                            .foregroundColor(Color(hex: "a78bfa"))
+                            .font(.system(size: 12))
+                            .foregroundColor(Color(hex: "f472b6"))
                         
                         Text(formattedDuration(recordedDuration))
-                            .font(.system(size: 18, weight: .medium))
-                            .foregroundColor(Color(hex: "a78bfa"))
+                            .font(.system(size: 14, weight: .medium, design: .monospaced))
+                            .foregroundColor(Color(hex: "f472b6"))
                     }
-                    .padding(.horizontal, 16)
-                    .padding(.vertical, 8)
+                    .padding(.horizontal, 12)
+                    .padding(.vertical, 6)
                     .background(
                         Capsule()
-                            .fill(Color(hex: "a78bfa").opacity(0.1))
+                            .fill(Color(hex: "f472b6").opacity(0.1))
                     )
                 }
             } else {
                 Text("长按开始录音")
-                    .font(.system(size: 14, weight: .semibold))
-                    .foregroundColor(Color(hex: "8b8b8b"))
+                    .font(.system(size: 14, weight: .medium))
+                    .foregroundColor(Color(hex: "9ca3af"))
             }
         }
-        .padding(.vertical, 24)
+        .padding(.vertical, 20)
         .onChange(of: duration) { oldValue, newDuration in
             if !isRecording && newDuration == 0 {
                 // 重置状态
@@ -387,10 +530,17 @@ struct TextPanelView: View {
                 .foregroundColor(Color(hex: "5a5a5a"))
                 .lineSpacing(8)
                 .scrollContentBackground(.hidden)
-                .frame(height: 150)
-                .padding(.horizontal, 4)
-                .padding(.vertical, 8)
-                .background(Color.clear)
+                .frame(height: 120)
+                .padding(.horizontal, 16)
+                .padding(.vertical, 12)
+                .background(
+                    RoundedRectangle(cornerRadius: 16)
+                        .fill(Color.white.opacity(0.8))
+                        .overlay(
+                            RoundedRectangle(cornerRadius: 16)
+                                .stroke(Color(hex: "e5e7eb"), lineWidth: 1)
+                        )
+                )
                 .focused($isTextEditorFocused)
             
             // 收回键盘按钮
@@ -402,16 +552,20 @@ struct TextPanelView: View {
                     }) {
                         Text("完成")
                             .font(.system(size: 13, weight: .semibold))
-                            .foregroundColor(Color(hex: "a78bfa"))
+                            .foregroundColor(Color(hex: "f472b6"))
                             .padding(.horizontal, 16)
                             .padding(.vertical, 8)
                             .background(
                                 Capsule()
-                                    .fill(Color(hex: "a78bfa").opacity(0.1))
+                                    .fill(Color.white.opacity(0.9))
+                                    .overlay(
+                                        Capsule()
+                                            .stroke(Color(hex: "f472b6").opacity(0.3), lineWidth: 1)
+                                    )
                             )
                     }
                 }
-                .padding(.top, 8)
+                .padding(.top, 12)
                 .transition(.opacity.combined(with: .move(edge: .bottom)))
             }
         }
@@ -434,26 +588,30 @@ struct ImagePanelView: View {
                 Button(action: { showActionSheet = true }) {
                     VStack(spacing: 16) {
                         Image(systemName: "plus")
-                            .font(.system(size: 48))
-                            .foregroundColor(Color(hex: "a7e4d0"))
+                            .font(.system(size: 32))
+                            .foregroundColor(Color(hex: "9ca3af"))
 
                         VStack(spacing: 4) {
                             Text("点击添加图片")
-                                .font(.system(size: 12))
-                                .foregroundColor(Color(hex: "8b8b8b"))
+                                .font(.system(size: 14, weight: .medium))
+                                .foregroundColor(Color(hex: "6b7280"))
                             
                             Text("支持相册选择或拍照")
                                 .font(.system(size: 12))
-                                .foregroundColor(Color(hex: "b8b8b8"))
+                                .foregroundColor(Color(hex: "9ca3af"))
                         }
                     }
                     .frame(maxWidth: .infinity)
-                    .padding(.vertical, 50)
+                    .padding(.vertical, 40)
                     .background(
-                        RoundedRectangle(cornerRadius: 20)
-                            .strokeBorder(
-                                Color(hex: "a78bfa").opacity(0.3),
-                                style: StrokeStyle(lineWidth: 2, dash: [8])
+                        RoundedRectangle(cornerRadius: 16)
+                            .fill(Color.white.opacity(0.8))
+                            .overlay(
+                                RoundedRectangle(cornerRadius: 16)
+                                    .strokeBorder(
+                                        Color(hex: "d1d5db"),
+                                        style: StrokeStyle(lineWidth: 2, dash: [8])
+                                    )
                             )
                     )
                 }
@@ -814,32 +972,36 @@ struct TagsAreaView: View {
     @State private var showNewTagToast: Bool = false
 
     var body: some View {
-        VStack(spacing: 14) {
+        VStack(spacing: 16) {
             HStack {
                 Text("添加标签")
-                    .font(.system(size: 14, weight: .bold))
-                    .foregroundColor(Color(hex: "5a5a5a"))
+                    .font(.system(size: 16, weight: .semibold))
+                    .foregroundColor(Color(hex: "374151"))
 
                 Spacer()
 
                 Button(action: { showNewTagToast = true }) {
-                    Text("+ 新建")
-                        .font(.system(size: 12, weight: .semibold))
-                        .foregroundColor(.white)
-                        .padding(.horizontal, 12)
-                        .padding(.vertical, 6)
-                        .background(
-                            LinearGradient(
-                                colors: [Color(hex: "a78bfa"), Color(hex: "f5a5d1")],
-                                startPoint: .leading,
-                                endPoint: .trailing
+                    HStack(spacing: 4) {
+                        Image(systemName: "plus")
+                            .font(.system(size: 12, weight: .semibold))
+                        Text("新建")
+                            .font(.system(size: 12, weight: .semibold))
+                    }
+                    .foregroundColor(Color(hex: "6b7280"))
+                    .padding(.horizontal, 12)
+                    .padding(.vertical, 6)
+                    .background(
+                        Capsule()
+                            .stroke(Color(hex: "d1d5db"), lineWidth: 1)
+                            .background(
+                                Capsule()
+                                    .fill(Color.white.opacity(0.8))
                             )
-                        )
-                        .clipShape(Capsule())
+                    )
                 }
             }
 
-            FlowLayout(spacing: 10) {
+            FlowLayout(spacing: 12) {
                 ForEach(tags) { tag in
                     TagItemView(
                         tag: tag,
@@ -852,24 +1014,22 @@ struct TagsAreaView: View {
         }
         .padding(20)
         .background(
-            RoundedRectangle(cornerRadius: 24)
-                .fill(
-                    LinearGradient(
-                        colors: [
-                            Color(hex: "a78bfa").opacity(0.06),
-                            Color(hex: "f5a5d1").opacity(0.06)
-                        ],
-                        startPoint: .topLeading,
-                        endPoint: .bottomTrailing
-                    )
+            RoundedRectangle(cornerRadius: 16)
+                .fill(Color.white.opacity(0.8))
+                .overlay(
+                    RoundedRectangle(cornerRadius: 16)
+                        .stroke(Color(hex: "e5e7eb"), lineWidth: 1)
+                )
+                .shadow(
+                    color: Color.black.opacity(0.05),
+                    radius: 8,
+                    x: 0,
+                    y: 2
                 )
         )
-        .overlay(
-            RoundedRectangle(cornerRadius: 24)
-                .stroke(Color(hex: "a78bfa").opacity(0.1), lineWidth: 1)
-        )
         .padding(.horizontal, 20)
-        .toast(isShowing: $showNewTagToast, message: "新建标签")
+        .padding(.top, 16)
+        .toast(isShowing: $showNewTagToast, message: "新建标签功能开发中")
     }
 }
 
