@@ -65,8 +65,8 @@ struct TabBarShape: Shape {
     func path(in rect: CGRect) -> Path {
         var path = Path()
         
-        let cornerRadius: CGFloat = 60
-        
+        let cornerRadius: CGFloat = 50
+
         // 从左下角开始
         path.move(to: CGPoint(x: 0, y: rect.maxY))
         

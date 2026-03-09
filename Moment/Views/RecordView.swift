@@ -304,7 +304,7 @@ struct RecordTabsView: View {
                                 Spacer()
                                 if selectedTab == tab {
                                     Rectangle()
-                                        .fill(Color(hex: "f472b6"))
+                                        .fill(Color(hex: "7dd3fc"))
                                         .frame(height: 3)
                                         .clipShape(Capsule())
                                         .transition(.scale.combined(with: .opacity))
@@ -374,7 +374,7 @@ struct VoicePanelView: View {
                         .fill(
                             RadialGradient(
                                 colors: [
-                                    Color(hex: "f472b6").opacity(0.3),
+                                    Color(hex: "a7e4d0").opacity(0.3),
                                     Color.clear
                                 ],
                                 center: .center,
@@ -387,13 +387,13 @@ struct VoicePanelView: View {
                         .animation(.easeInOut(duration: 1.0).repeatForever(autoreverses: true), value: isRecording)
                 }
                 
-                // Main recording button - 缩小尺寸
+                // Main recording button - 使用ListView中的浅色
                 Circle()
                     .fill(
                         LinearGradient(
                             colors: [
-                                Color(hex: "f472b6"),
-                                Color(hex: "ec4899")
+                                Color(hex: "a7e4d0"), // 浅绿色
+                                Color(hex: "7dd3fc")  // 浅蓝色
                             ],
                             startPoint: .topLeading,
                             endPoint: .bottomTrailing
@@ -401,7 +401,7 @@ struct VoicePanelView: View {
                     )
                     .frame(width: 80, height: 80)
                     .shadow(
-                        color: Color(hex: "f472b6").opacity(0.4),
+                        color: Color(hex: "a7e4d0").opacity(0.4),
                         radius: isRecording ? 16 : 8,
                         x: 0,
                         y: isRecording ? 8 : 4
@@ -445,7 +445,7 @@ struct VoicePanelView: View {
                         HStack(spacing: 2) {
                             ForEach(0..<3) { index in
                                 Circle()
-                                    .fill(Color(hex: "f472b6"))
+                                    .fill(Color(hex: "a7e4d0"))
                                     .frame(width: 3, height: 3)
                                     .scaleEffect(isRecording ? 1.0 : 0.5)
                                     .animation(
@@ -460,7 +460,7 @@ struct VoicePanelView: View {
                     
                     Text(formattedDuration(duration))
                         .font(.system(size: 20, weight: .light, design: .monospaced))
-                        .foregroundColor(Color(hex: "f472b6"))
+                        .foregroundColor(Color(hex: "7dd3fc"))
                         .tracking(1)
                 }
             } else if hasRecorded && recordedDuration > 0 {
@@ -478,17 +478,17 @@ struct VoicePanelView: View {
                     HStack(spacing: 6) {
                         Image(systemName: "waveform")
                             .font(.system(size: 12))
-                            .foregroundColor(Color(hex: "f472b6"))
+                            .foregroundColor(Color(hex: "7dd3fc"))
                         
                         Text(formattedDuration(recordedDuration))
                             .font(.system(size: 14, weight: .medium, design: .monospaced))
-                            .foregroundColor(Color(hex: "f472b6"))
+                            .foregroundColor(Color(hex: "7dd3fc"))
                     }
                     .padding(.horizontal, 12)
                     .padding(.vertical, 6)
                     .background(
                         Capsule()
-                            .fill(Color(hex: "f472b6").opacity(0.1))
+                            .fill(Color(hex: "a7e4d0").opacity(0.1))
                     )
                 }
             } else {
@@ -567,7 +567,7 @@ struct TextPanelView: View {
                     }) {
                         Text("完成")
                             .font(.system(size: 13, weight: .semibold))
-                            .foregroundColor(Color(hex: "f472b6"))
+                            .foregroundColor(Color(hex: "7dd3fc"))
                             .padding(.horizontal, 16)
                             .padding(.vertical, 8)
                             .background(
@@ -575,7 +575,7 @@ struct TextPanelView: View {
                                     .fill(Color.white.opacity(0.9))
                                     .overlay(
                                         Capsule()
-                                            .stroke(Color(hex: "f472b6").opacity(0.3), lineWidth: 1)
+                                            .stroke(Color(hex: "7dd3fc").opacity(0.3), lineWidth: 1)
                                     )
                             )
                     }

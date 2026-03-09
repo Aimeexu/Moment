@@ -34,13 +34,13 @@ struct TagItemView: View {
             RoundedRectangle(cornerRadius: 20)
                 .fill(
                     LinearGradient(
-                        colors: [Color(hex: "f472b6"), Color(hex: "ec4899")],
+                        colors: [Color(hex: "a7e4d0"), Color(hex: "7dd3fc")],
                         startPoint: .leading,
                         endPoint: .trailing
                     )
                 )
                 .shadow(
-                    color: Color(hex: "f472b6").opacity(0.3),
+                    color: Color(hex: "a7e4d0").opacity(0.3),
                     radius: 8,
                     x: 0,
                     y: 4
