@@ -43,10 +43,11 @@ struct TabBarView: View {
             }
         }
         .padding(.horizontal, 20)
-        .padding(.vertical, 16)
-        .padding(.bottom, 34) // Safe area bottom padding
+        .padding(.top, 16)
+        .padding(.bottom, 34) // 保持底部安全区域padding
         .background(
-            RoundedRectangle(cornerRadius: 0)
+            // 自定义形状，左右上角有圆弧
+            TabBarShape()
                 .fill(Color.white)
                 .shadow(
                     color: Color.black.opacity(0.08),
@@ -54,7 +55,52 @@ struct TabBarView: View {
                     x: 0,
                     y: -4
                 )
+                .ignoresSafeArea(.container, edges: .bottom) // 忽略底部安全区域
         )
+    }
+}
+
+// 自定义TabBar形状，左右上角有圆弧
+struct TabBarShape: Shape {
+    func path(in rect: CGRect) -> Path {
+        var path = Path()
+        
+        let cornerRadius: CGFloat = 60
+        
+        // 从左下角开始
+        path.move(to: CGPoint(x: 0, y: rect.maxY))
+        
+        // 左边线到左上角圆弧开始点
+        path.addLine(to: CGPoint(x: 0, y: cornerRadius))
+        
+        // 左上角圆弧
+        path.addArc(
+            center: CGPoint(x: cornerRadius, y: cornerRadius),
+            radius: cornerRadius,
+            startAngle: .degrees(180),
+            endAngle: .degrees(270),
+            clockwise: false
+        )
+        
+        // 顶边线到右上角圆弧开始点
+        path.addLine(to: CGPoint(x: rect.maxX - cornerRadius, y: 0))
+        
+        // 右上角圆弧
+        path.addArc(
+            center: CGPoint(x: rect.maxX - cornerRadius, y: cornerRadius),
+            radius: cornerRadius,
+            startAngle: .degrees(270),
+            endAngle: .degrees(0),
+            clockwise: false
+        )
+        
+        // 右边线到右下角
+        path.addLine(to: CGPoint(x: rect.maxX, y: rect.maxY))
+        
+        // 底边线回到起点
+        path.addLine(to: CGPoint(x: 0, y: rect.maxY))
+        
+        return path
     }
 }
 

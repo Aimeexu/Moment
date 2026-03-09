@@ -344,6 +344,7 @@ class AppViewModel: NSObject, ObservableObject {
     func goToList() {
         currentPage = .list
         isShowingRecord = false
+        resetRecordState()
     }
 
     func goToSettings() {
@@ -463,7 +464,7 @@ class AppViewModel: NSObject, ObservableObject {
             showToastMessage("记录已保存")
             print("✅ Record saved successfully with \(record.imageURLStrings.count) image filenames")
             DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) { [weak self] in
-                self?.goHome()
+                self?.goToList() // 跳转到记录列表页面
             }
         } catch {
             showToastMessage("保存失败: \(error.localizedDescription)")

@@ -353,10 +353,6 @@ struct RecordInputPanel: View {
         }
         .padding(.horizontal, 20)
         .padding(.top, 16)
-        .onTapGesture {
-            // 点击空白区域收回键盘
-            UIApplication.shared.sendAction(#selector(UIResponder.resignFirstResponder), to: nil, from: nil, for: nil)
-        }
     }
 }
 
@@ -525,23 +521,42 @@ struct TextPanelView: View {
 
     var body: some View {
         VStack(spacing: 0) {
-            TextEditor(text: $textContent)
-                .font(.system(size: 15))
-                .foregroundColor(Color(hex: "5a5a5a"))
-                .lineSpacing(8)
-                .scrollContentBackground(.hidden)
-                .frame(height: 120)
-                .padding(.horizontal, 16)
-                .padding(.vertical, 12)
-                .background(
-                    RoundedRectangle(cornerRadius: 16)
-                        .fill(Color.white.opacity(0.8))
-                        .overlay(
-                            RoundedRectangle(cornerRadius: 16)
-                                .stroke(Color(hex: "e5e7eb"), lineWidth: 1)
-                        )
-                )
-                .focused($isTextEditorFocused)
+            ZStack(alignment: .topLeading) {
+                // 背景容器 - 增加点击区域
+                RoundedRectangle(cornerRadius: 16)
+                    .fill(Color.white.opacity(0.8))
+                    .overlay(
+                        RoundedRectangle(cornerRadius: 16)
+                            .stroke(Color(hex: "e5e7eb"), lineWidth: 1)
+                    )
+                    .frame(height: 120)
+                    .contentShape(Rectangle()) // 确保整个区域可点击
+                    .onTapGesture {
+                        isTextEditorFocused = true
+                    }
+                
+                // 占位符文字
+                if textContent.isEmpty && !isTextEditorFocused {
+                    Text("写下此刻的心情...")
+                        .font(.system(size: 15))
+                        .foregroundColor(Color(hex: "9ca3af"))
+                        .padding(.horizontal, 20)
+                        .padding(.vertical, 16)
+                        .allowsHitTesting(false) // 不阻挡点击事件
+                }
+                
+                // 文字编辑器
+                TextEditor(text: $textContent)
+                    .font(.system(size: 15))
+                    .foregroundColor(Color(hex: "374151"))
+                    .lineSpacing(4)
+                    .scrollContentBackground(.hidden)
+                    .background(Color.clear)
+                    .padding(.horizontal, 16)
+                    .padding(.vertical, 12)
+                    .focused($isTextEditorFocused)
+                    .frame(height: 120)
+            }
             
             // 收回键盘按钮
             if isTextEditorFocused {

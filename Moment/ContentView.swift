@@ -39,6 +39,7 @@ struct ContentView: View {
                     Spacer()
                     TabBarView(currentPage: $viewModel.currentPage)
                 }
+                .ignoresSafeArea(.container, edges: .bottom)
             }
 
             // Toast
@@ -46,7 +47,7 @@ struct ContentView: View {
                 VStack {
                     Spacer()
                     ToastView(message: viewModel.toastMessage)
-                        .padding(.bottom, 120)
+                        .padding(.bottom, viewModel.currentPage != .record ? 140 : 100)
                         .transition(.move(edge: .bottom).combined(with: .opacity))
                 }
             }
