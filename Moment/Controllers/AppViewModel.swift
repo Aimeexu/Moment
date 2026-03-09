@@ -164,8 +164,29 @@ class AppViewModel: NSObject, ObservableObject {
     
     func addImage(_ imageURL: URL) {
         if selectedImages.count < 9 {
-            selectedImages.append(imageURL)
-            print("Image added successfully: \(imageURL.absoluteString)")
+            // Copy image to Documents directory with a unique filename
+            let documentsPath = FileManager.default.urls(for: .documentDirectory, in: .userDomainMask)[0]
+            let filename = "image_\(UUID().uuidString).jpg"
+            let destinationURL = documentsPath.appendingPathComponent(filename)
+            
+            do {
+                // If it's from photo library, we need to load and save the image data
+                if let imageData = try? Data(contentsOf: imageURL),
+                   let image = UIImage(data: imageData) {
+                    if let jpegData = image.jpegData(compressionQuality: 0.8) {
+                        try jpegData.write(to: destinationURL)
+                        selectedImages.append(destinationURL)
+                        print("✅ Image saved to Documents: \(filename)")
+                    }
+                } else {
+                    // Try to copy the file directly
+                    try FileManager.default.copyItem(at: imageURL, to: destinationURL)
+                    selectedImages.append(destinationURL)
+                    print("✅ Image copied to Documents: \(filename)")
+                }
+            } catch {
+                print("❌ Failed to save image: \(error)")
+            }
         } else {
             print("Cannot add image: maximum limit reached")
         }
@@ -188,6 +209,11 @@ class AppViewModel: NSObject, ObservableObject {
         selectedImages.removeAll()
     }
     
+    func clearUnsavedImages() {
+        // Only clear the array without deleting files (for when canceling record)
+        selectedImages.removeAll()
+    }
+    
     // Helper function to convert URL to filename for storage
     private func getFilenameFromURL(_ url: URL) -> String {
         return url.lastPathComponent
@@ -207,7 +233,15 @@ class AppViewModel: NSObject, ObservableObject {
         if let imageData = testImage.jpegData(compressionQuality: 0.8) {
             do {
                 try imageData.write(to: testImageURL)
-                print("✅ Test image created at: \(testImageURL.absoluteString)")
+                print("✅ Test image created at: \(testImageURL.path)")
+                
+                // Verify the file was created
+                let fileExists = FileManager.default.fileExists(atPath: testImageURL.path)
+                print("✅ Test image file exists: \(fileExists)")
+                
+                if let fileSize = try? FileManager.default.attributesOfItem(atPath: testImageURL.path)[.size] as? Int {
+                    print("✅ Test image file size: \(fileSize) bytes")
+                }
             } catch {
                 print("❌ Failed to create test image: \(error)")
                 return
@@ -218,10 +252,10 @@ class AppViewModel: NSObject, ObservableObject {
             emotionName: "开心",
             emotionEmoji: "😊",
             date: Date(),
-            textContent: "这是一个测试记录，用来验证图片显示功能",
+            textContent: "这是一个测试记录，用来验证图片显示功能。图片应该能正常显示在列表中。",
             imageURLStrings: [filename], // Store only filename
-            tagNames: ["测试"],
-            tagIcons: ["🧪"]
+            tagNames: ["测试", "图片"],
+            tagIcons: ["🧪", "📸"]
         )
         
         context.insert(testRecord)
@@ -236,30 +270,60 @@ class AppViewModel: NSObject, ObservableObject {
     }
     
     private func createTestImage() -> UIImage {
-        let size = CGSize(width: 300, height: 200)
+        let size = CGSize(width: 400, height: 300)
         let renderer = UIGraphicsImageRenderer(size: size)
         
         return renderer.image { context in
-            // Background
-            UIColor(red: 0.65, green: 0.55, blue: 0.98, alpha: 1.0).setFill()
-            context.fill(CGRect(origin: .zero, size: size))
+            // Gradient background
+            let colors = [UIColor(red: 0.65, green: 0.55, blue: 0.98, alpha: 1.0).cgColor,
+                         UIColor(red: 0.96, green: 0.65, blue: 0.82, alpha: 1.0).cgColor]
+            let gradient = CGGradient(colorsSpace: CGColorSpaceCreateDeviceRGB(),
+                                    colors: colors as CFArray,
+                                    locations: [0.0, 1.0])!
             
-            // Text
-            let text = "Test Image"
-            let attributes: [NSAttributedString.Key: Any] = [
-                .font: UIFont.systemFont(ofSize: 24, weight: .bold),
+            context.cgContext.drawLinearGradient(gradient,
+                                               start: CGPoint(x: 0, y: 0),
+                                               end: CGPoint(x: size.width, y: size.height),
+                                               options: [])
+            
+            // Add some decorative elements
+            context.cgContext.setFillColor(UIColor.white.withAlphaComponent(0.3).cgColor)
+            context.cgContext.fillEllipse(in: CGRect(x: 50, y: 50, width: 100, height: 100))
+            context.cgContext.fillEllipse(in: CGRect(x: 250, y: 150, width: 80, height: 80))
+            
+            // Main text
+            let mainText = "测试图片"
+            let mainAttributes: [NSAttributedString.Key: Any] = [
+                .font: UIFont.systemFont(ofSize: 32, weight: .bold),
                 .foregroundColor: UIColor.white
             ]
             
-            let textSize = text.size(withAttributes: attributes)
-            let textRect = CGRect(
-                x: (size.width - textSize.width) / 2,
-                y: (size.height - textSize.height) / 2,
-                width: textSize.width,
-                height: textSize.height
+            let mainTextSize = mainText.size(withAttributes: mainAttributes)
+            let mainTextRect = CGRect(
+                x: (size.width - mainTextSize.width) / 2,
+                y: (size.height - mainTextSize.height) / 2 - 20,
+                width: mainTextSize.width,
+                height: mainTextSize.height
             )
             
-            text.draw(in: textRect, withAttributes: attributes)
+            mainText.draw(in: mainTextRect, withAttributes: mainAttributes)
+            
+            // Subtitle
+            let subtitle = "Test Image"
+            let subtitleAttributes: [NSAttributedString.Key: Any] = [
+                .font: UIFont.systemFont(ofSize: 16, weight: .medium),
+                .foregroundColor: UIColor.white.withAlphaComponent(0.8)
+            ]
+            
+            let subtitleSize = subtitle.size(withAttributes: subtitleAttributes)
+            let subtitleRect = CGRect(
+                x: (size.width - subtitleSize.width) / 2,
+                y: mainTextRect.maxY + 10,
+                width: subtitleSize.width,
+                height: subtitleSize.height
+            )
+            
+            subtitle.draw(in: subtitleRect, withAttributes: subtitleAttributes)
         }
     }
 
@@ -370,10 +434,11 @@ class AppViewModel: NSObject, ObservableObject {
 
         print("Saving record with \(selectedImages.count) images")
         
-        // Convert URLs to filenames for storage
-        let imageFilenames = selectedImages.map { getFilenameFromURL($0) }
-        for (index, filename) in imageFilenames.enumerated() {
-            print("Image \(index): \(filename)")
+        // Convert URLs to filenames for storage (images should already be in Documents)
+        let imageFilenames = selectedImages.map { url in
+            let filename = url.lastPathComponent
+            print("Saving image filename: \(filename)")
+            return filename
         }
 
         let record = MoodRecord(
@@ -396,13 +461,13 @@ class AppViewModel: NSObject, ObservableObject {
             try context.save()
             fetchRecords()
             showToastMessage("记录已保存")
-            print("Record saved successfully with \(record.imageURLStrings.count) image filenames")
+            print("✅ Record saved successfully with \(record.imageURLStrings.count) image filenames")
             DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) { [weak self] in
                 self?.goHome()
             }
         } catch {
             showToastMessage("保存失败: \(error.localizedDescription)")
-            print("Failed to save record: \(error)")
+            print("❌ Failed to save record: \(error)")
         }
     }
 
@@ -413,7 +478,7 @@ class AppViewModel: NSObject, ObservableObject {
         selectedTags = []
         isRecording = false
         recordingDuration = 0
-        clearImages() // Clear images and delete files
+        selectedImages.removeAll() // Only clear the array, don't delete saved images
         bookmarkURL = ""
         bookmarkTitle = ""
         currentRecordingURL = nil

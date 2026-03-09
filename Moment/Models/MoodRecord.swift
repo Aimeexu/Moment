@@ -76,40 +76,34 @@ final class MoodRecord {
     var imageURLs: [URL] {
         let documentsPath = FileManager.default.urls(for: .documentDirectory, in: .userDomainMask)[0]
         
-        let urls = imageURLStrings.compactMap { urlString in
-            // Check if it's already a full URL
+        return imageURLStrings.compactMap { urlString in
+            // Handle different URL string formats
+            let filename: String
+            
             if let url = URL(string: urlString), url.scheme != nil {
-                // Extract just the filename from the old absolute path
-                let filename = url.lastPathComponent
-                let newURL = documentsPath.appendingPathComponent(filename)
-                print("🔄 Converting old absolute URL to current path:")
-                print("   Old: \(urlString)")
-                print("   New: \(newURL.absoluteString)")
-                return newURL
+                // It's a full URL, extract filename
+                filename = url.lastPathComponent
+            } else if urlString.hasPrefix("Documents/") {
+                // It's a relative path starting with Documents/
+                filename = String(urlString.dropFirst("Documents/".count))
+            } else if urlString.contains("/") {
+                // It's some other path, extract filename
+                filename = (urlString as NSString).lastPathComponent
+            } else {
+                // It's already just a filename
+                filename = urlString
             }
-            // If it's just a filename, create the full path
-            else if !urlString.contains("/") {
-                let url = documentsPath.appendingPathComponent(urlString)
-                print("🔗 Creating URL from filename: \(urlString) -> \(url.absoluteString)")
-                return url
-            }
-            // If it's a relative path starting with Documents/
-            else if urlString.hasPrefix("Documents/") {
-                let filename = String(urlString.dropFirst("Documents/".count))
-                let url = documentsPath.appendingPathComponent(filename)
-                print("🔗 Creating URL from relative path: \(urlString) -> \(url.absoluteString)")
-                return url
-            }
-            // Fallback: try to extract filename from any path
-            else {
-                let filename = (urlString as NSString).lastPathComponent
-                let url = documentsPath.appendingPathComponent(filename)
-                print("🔗 Extracting filename from path: \(urlString) -> \(url.absoluteString)")
-                return url
+            
+            let fullURL = documentsPath.appendingPathComponent(filename)
+            
+            // Verify file exists before returning URL
+            if FileManager.default.fileExists(atPath: fullURL.path) {
+                return fullURL
+            } else {
+                print("⚠️ Image file not found: \(filename)")
+                return nil
             }
         }
-        print("🔗 Total imageURLs: \(urls.count)")
-        return urls
     }
     
     var bookmarkURL: URL? {

@@ -269,23 +269,10 @@ struct RecordImageThumbnail: View {
     }
     
     private func loadImage() {
-        print("🖼️ Loading image from: \(imageURL.absoluteString)")
-        print("🖼️ File path: \(imageURL.path)")
-        print("🖼️ URL scheme: \(imageURL.scheme ?? "no scheme")")
-        
         DispatchQueue.global(qos: .userInitiated).async {
             do {
                 // Check if file exists
-                let fileExists = FileManager.default.fileExists(atPath: imageURL.path)
-                print("🖼️ File exists: \(fileExists)")
-                
-                guard fileExists else {
-                    print("❌ Image file not found at path: \(imageURL.path)")
-                    // List directory contents for debugging
-                    let parentDir = imageURL.deletingLastPathComponent()
-                    if let contents = try? FileManager.default.contentsOfDirectory(atPath: parentDir.path) {
-                        print("📁 Directory contents: \(contents)")
-                    }
+                guard FileManager.default.fileExists(atPath: self.imageURL.path) else {
                     DispatchQueue.main.async {
                         self.isLoading = false
                         self.loadFailed = true
@@ -293,25 +280,22 @@ struct RecordImageThumbnail: View {
                     return
                 }
                 
-                print("✅ Image file exists, loading data...")
-                let imageData = try Data(contentsOf: imageURL)
-                print("✅ Image data loaded, size: \(imageData.count) bytes")
+                // Load image data
+                let imageData = try Data(contentsOf: self.imageURL)
                 
-                if let uiImage = UIImage(data: imageData) {
-                    print("✅ UIImage created successfully, size: \(uiImage.size)")
-                    DispatchQueue.main.async {
-                        self.image = uiImage
-                        self.isLoading = false
-                    }
-                } else {
-                    print("❌ Failed to create UIImage from data")
+                guard let uiImage = UIImage(data: imageData) else {
                     DispatchQueue.main.async {
                         self.isLoading = false
                         self.loadFailed = true
                     }
+                    return
+                }
+                
+                DispatchQueue.main.async {
+                    self.image = uiImage
+                    self.isLoading = false
                 }
             } catch {
-                print("❌ Failed to load image from \(imageURL): \(error)")
                 DispatchQueue.main.async {
                     self.isLoading = false
                     self.loadFailed = true
@@ -362,11 +346,9 @@ struct RecordImagesGrid: View {
             }
         }
         .onAppear {
-            print("🎯 RecordImagesGrid appeared with \(imageURLs.count) images")
-            for (index, url) in imageURLs.enumerated() {
-                print("🎯 Image \(index): \(url.absoluteString)")
-                print("🎯 Image \(index) path: \(url.path)")
-                print("🎯 Image \(index) file exists: \(FileManager.default.fileExists(atPath: url.path))")
+            // Only log if there are issues with image loading
+            if imageURLs.isEmpty {
+                print("⚠️ RecordImagesGrid: No images to display")
             }
         }
     }
