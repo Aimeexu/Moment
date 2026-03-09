@@ -85,93 +85,113 @@ struct RecordItemView: View {
     @StateObject private var audioManager = AudioPlayerManager()
 
     var body: some View {
-        HStack(alignment: .top, spacing: 14) {
-            // Emoji
-            RoundedRectangle(cornerRadius: 16)
-                .fill(
-                    LinearGradient(
-                        colors: [
-                            Color(hex: "a78bfa").opacity(0.15),
-                            Color(hex: "f5a5d1").opacity(0.15)
-                        ],
-                        startPoint: .topLeading,
-                        endPoint: .bottomTrailing
+        HStack(alignment: .top, spacing: 16) {
+            // Emotion Avatar
+            ZStack {
+                Circle()
+                    .fill(Color(hex: record.emotion.backgroundColor))
+                    .frame(width: 64, height: 64)
+                    .shadow(
+                        color: Color(hex: "a78bfa").opacity(0.15),
+                        radius: 8,
+                        x: 0,
+                        y: 4
                     )
-                )
-                .frame(width: 100, height: 100)
-                .overlay(
-                    Text(record.emotion.emoji)
-                        .font(.system(size: 48))
-                )
+                
+                Image(record.emotion.imageName)
+                    .resizable()
+                    .aspectRatio(contentMode: .fit)
+                    .frame(width: 48, height: 48)
+            }
 
             // Content
-            VStack(alignment: .leading, spacing: 6) {
+            VStack(alignment: .leading, spacing: 8) {
                 // Time
                 Text(record.formattedDate)
-                    .font(.system(size: 12, weight: .semibold))
-                    .foregroundColor(Color(hex: "b8b8b8"))
+                    .font(.system(size: 12, weight: .medium))
+                    .foregroundColor(Color(hex: "999999"))
 
-                // Text
-                if let text = record.textContent {
-                    Text(text)
-                        .font(.system(size: 14, weight: .medium))
-                        .foregroundColor(Color(hex: "5a5a5a"))
-                        .lineLimit(2)
-                        .lineSpacing(4)
-                }
-
-                // Media
-                HStack(spacing: 8) {
-                    // Voice
-                    if record.voiceURL != nil {
-                        Button(action: { audioManager.togglePlayback(for: record) }) {
-                            HStack(spacing: 6) {
-                                Image(systemName: audioManager.isPlaying ? "pause.fill" : "play.fill")
-                                    .font(.system(size: 12))
-                                Text(record.formattedVoiceDuration ?? "")
-                                    .font(.system(size: 12))
-                            }
-                            .foregroundColor(.white)
-                            .padding(.horizontal, 12)
-                            .padding(.vertical, 6)
-                            .background(
-                                RoundedRectangle(cornerRadius: 12)
-                                    .fill(
-                                        LinearGradient(
-                                            colors: audioManager.isPlaying ? 
-                                                [Color(hex: "f5a5d1"), Color(hex: "a78bfa")] :
-                                                [Color(hex: "a7e4d0"), Color(hex: "a7e4d0").opacity(0.6)],
-                                            startPoint: .leading,
-                                            endPoint: .trailing
-                                        )
-                                    )
-                            )
-                        }
-                        .buttonStyle(PlainButtonStyle())
+                // Content Card
+                VStack(alignment: .leading, spacing: 12) {
+                    // Text Content
+                    if let text = record.textContent {
+                        Text(text)
+                            .font(.system(size: 15, weight: .regular))
+                            .foregroundColor(Color(hex: "333333"))
+                            .lineLimit(3)
+                            .lineSpacing(2)
                     }
 
-                    // Images
-                    if !record.imageURLs.isEmpty {
-                        RecordImagesGrid(imageURLs: record.imageURLs)
-                    }
-                }
-
-                // Tags
-                if !record.tags.isEmpty {
-                    HStack(spacing: 6) {
-                        ForEach(record.tags) { tag in
-                            Text("\(tag.icon) \(tag.name)")
-                                .font(.system(size: 10, weight: .medium))
-                                .foregroundColor(Color(hex: "8b8b8b"))
-                                .padding(.horizontal, 8)
-                                .padding(.vertical, 4)
+                    // Media Content
+                    VStack(alignment: .leading, spacing: 8) {
+                        // Voice
+                        if record.voiceURL != nil {
+                            Button(action: { audioManager.togglePlayback(for: record) }) {
+                                HStack(spacing: 8) {
+                                    Image(systemName: audioManager.isPlaying ? "pause.fill" : "play.fill")
+                                        .font(.system(size: 12, weight: .medium))
+                                    Text(record.formattedVoiceDuration ?? "00:00")
+                                        .font(.system(size: 12, weight: .medium))
+                                }
+                                .foregroundColor(.white)
+                                .padding(.horizontal, 12)
+                                .padding(.vertical, 6)
                                 .background(
                                     Capsule()
-                                        .fill(Color(hex: "a78bfa").opacity(0.1))
+                                        .fill(
+                                            LinearGradient(
+                                                colors: audioManager.isPlaying ? 
+                                                    [Color(hex: "f5a5d1"), Color(hex: "a78bfa")] :
+                                                    [Color(hex: "a7e4d0"), Color(hex: "7dd3fc")],
+                                                startPoint: .leading,
+                                                endPoint: .trailing
+                                            )
+                                        )
                                 )
+                            }
+                            .buttonStyle(PlainButtonStyle())
+                        }
+
+                        // Images
+                        if !record.imageURLs.isEmpty {
+                            RecordImagesGrid(imageURLs: record.imageURLs)
+                        }
+                    }
+
+                    // Tags
+                    if !record.tags.isEmpty {
+                        HStack(spacing: 6) {
+                            ForEach(record.tags.prefix(3)) { tag in
+                                Text("\(tag.icon) \(tag.name)")
+                                    .font(.system(size: 11, weight: .medium))
+                                    .foregroundColor(Color(hex: "666666"))
+                                    .padding(.horizontal, 10)
+                                    .padding(.vertical, 4)
+                                    .background(
+                                        Capsule()
+                                            .fill(Color(hex: "f5f5f5"))
+                                    )
+                            }
+                            
+                            if record.tags.count > 3 {
+                                Text("+\(record.tags.count - 3)")
+                                    .font(.system(size: 11, weight: .medium))
+                                    .foregroundColor(Color(hex: "999999"))
+                                    .padding(.horizontal, 8)
+                                    .padding(.vertical, 4)
+                                    .background(
+                                        Capsule()
+                                            .fill(Color(hex: "f0f0f0"))
+                                    )
+                            }
                         }
                     }
                 }
+                .padding(16)
+                .background(
+                    RoundedRectangle(cornerRadius: 16)
+                        .fill(Color(hex: "e8f4f8"))
+                )
             }
             
             Spacer()
@@ -179,20 +199,22 @@ struct RecordItemView: View {
             // More button
             Button(action: onMoreTapped) {
                 Image(systemName: "ellipsis")
-                    .font(.system(size: 18))
-                    .foregroundColor(Color(hex: "b8b8b8"))
-                    .frame(width: 36, height: 36)
+                    .font(.system(size: 16, weight: .medium))
+                    .foregroundColor(Color(hex: "cccccc"))
+                    .frame(width: 32, height: 32)
             }
             .buttonStyle(PlainButtonStyle())
         }
-        .padding(16)
+        .padding(20)
         .background(
             RoundedRectangle(cornerRadius: 20)
-                .fill(Color.white.opacity(0.6))
-        )
-        .overlay(
-            RoundedRectangle(cornerRadius: 20)
-                .stroke(Color(hex: "a78bfa").opacity(0.1), lineWidth: 1)
+                .fill(Color(hex: "FBF8F0"))
+                .shadow(
+                    color: Color.black.opacity(0.08),
+                    radius: 8,
+                    x: 0,
+                    y: 2
+                )
         )
     }
 }
@@ -206,8 +228,8 @@ struct RecordImageThumbnail: View {
     @State private var loadFailed: Bool = false
     
     var body: some View {
-        RoundedRectangle(cornerRadius: 12)
-            .fill(Color(hex: "f5f5f5"))
+        RoundedRectangle(cornerRadius: 8)
+            .fill(Color(hex: "f8f9fa"))
             .overlay(
                 Group {
                     if let image = image {
@@ -217,29 +239,29 @@ struct RecordImageThumbnail: View {
                             .clipped()
                     } else if isLoading {
                         ProgressView()
-                            .scaleEffect(0.8)
+                            .scaleEffect(0.7)
                             .tint(Color(hex: "a78bfa"))
                     } else {
-                        VStack(spacing: 4) {
-                            Image(systemName: loadFailed ? "exclamationmark.triangle" : "photo")
-                                .font(.system(size: 24))
-                                .foregroundColor(loadFailed ? Color(hex: "f5a5d1") : Color(hex: "b8b8b8"))
+                        VStack(spacing: 2) {
+                            Image(systemName: loadFailed ? "exclamationmark.triangle.fill" : "photo")
+                                .font(.system(size: 16, weight: .medium))
+                                .foregroundColor(loadFailed ? Color(hex: "ff6b6b") : Color(hex: "cccccc"))
                             
                             if loadFailed {
                                 Text("加载失败")
-                                    .font(.system(size: 10))
-                                    .foregroundColor(Color(hex: "b8b8b8"))
+                                    .font(.system(size: 8, weight: .medium))
+                                    .foregroundColor(Color(hex: "999999"))
                             }
                         }
                     }
                 }
             )
-            .clipShape(RoundedRectangle(cornerRadius: 12))
+            .clipShape(RoundedRectangle(cornerRadius: 8))
             .shadow(
-                color: Color.black.opacity(0.1),
-                radius: 4,
+                color: Color.black.opacity(0.06),
+                radius: 3,
                 x: 0,
-                y: 2
+                y: 1
             )
             .onAppear {
                 loadImage()
@@ -304,24 +326,39 @@ struct RecordImagesGrid: View {
     let imageURLs: [URL]
     
     var body: some View {
-        VStack(spacing: 8) {
+        VStack(spacing: 6) {
             if imageURLs.count == 1 {
-                // 单张图片：占屏幕宽度的2/3
+                // 单张图片：较小尺寸
                 RecordImageThumbnail(imageURL: imageURLs[0])
                     .aspectRatio(4/3, contentMode: .fit)
-                    .frame(maxWidth: .infinity)
-                    .frame(maxWidth: 250) // 限制最大宽度
+                    .frame(maxWidth: 120, maxHeight: 90)
             } else if imageURLs.count > 1 {
-                // 多张图片：一行两张
+                // 多张图片：网格布局
                 LazyVGrid(columns: [
-                    GridItem(.flexible(), spacing: 8),
-                    GridItem(.flexible(), spacing: 8)
-                ], spacing: 8) {
-                    ForEach(Array(imageURLs.enumerated()), id: \.offset) { index, imageURL in
+                    GridItem(.flexible(), spacing: 6),
+                    GridItem(.flexible(), spacing: 6)
+                ], spacing: 6) {
+                    ForEach(Array(imageURLs.prefix(4).enumerated()), id: \.offset) { index, imageURL in
                         RecordImageThumbnail(imageURL: imageURL)
-                            .aspectRatio(4/3, contentMode: .fit)
+                            .aspectRatio(1, contentMode: .fit)
+                            .frame(maxWidth: 60, maxHeight: 60)
+                            .overlay(
+                                // Show count overlay for 4th image if there are more
+                                Group {
+                                    if index == 3 && imageURLs.count > 4 {
+                                        RoundedRectangle(cornerRadius: 8)
+                                            .fill(Color.black.opacity(0.6))
+                                            .overlay(
+                                                Text("+\(imageURLs.count - 3)")
+                                                    .font(.system(size: 12, weight: .semibold))
+                                                    .foregroundColor(.white)
+                                            )
+                                    }
+                                }
+                            )
                     }
                 }
+                .frame(maxWidth: 132) // 60*2 + 6*2
             }
         }
         .onAppear {

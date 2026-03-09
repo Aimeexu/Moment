@@ -24,6 +24,12 @@ enum RecordTab: String, CaseIterable {
     case image
 }
 
+struct FilterOption: Hashable {
+    let text: String
+    let imageName: String?
+    let emotionName: String
+}
+
 @MainActor
 class AppViewModel: NSObject, ObservableObject {
     // MARK: - SwiftData
@@ -46,7 +52,7 @@ class AppViewModel: NSObject, ObservableObject {
 
     // MARK: - Records
     @Published var records: [MoodRecord] = []
-    @Published var selectedFilter: String = "全部"
+    @Published var selectedFilter: FilterOption = FilterOption(text: "全部", imageName: nil, emotionName: "全部")
 
     // MARK: - Settings
     @Published var isAppLockEnabled: Bool = false
@@ -64,19 +70,20 @@ class AppViewModel: NSObject, ObservableObject {
     private var audioRecorder: AVAudioRecorder?
     private var currentRecordingURL: URL?
 
-    var filterOptions: [String] {
-        var options = ["全部"]
-        options.append(contentsOf: Emotion.allEmotions.map { "\($0.emoji) \($0.name)" })
+    var filterOptions: [FilterOption] {
+        var options: [FilterOption] = [FilterOption(text: "全部", imageName: nil, emotionName: "全部")]
+        options.append(contentsOf: Emotion.allEmotions.map { 
+            FilterOption(text: $0.name, imageName: $0.imageName, emotionName: $0.name)
+        })
         return options
     }
 
     var filteredRecords: [MoodRecord] {
-        if selectedFilter == "全部" {
+        if selectedFilter.emotionName == "全部" {
             return records.sorted { $0.date > $1.date }
         }
-        let emotionName = selectedFilter.components(separatedBy: " ").last ?? ""
         return records
-            .filter { $0.emotionName == emotionName }
+            .filter { $0.emotionName == selectedFilter.emotionName }
             .sorted { $0.date > $1.date }
     }
 
@@ -418,11 +425,6 @@ class AppViewModel: NSObject, ObservableObject {
         DispatchQueue.main.asyncAfter(deadline: .now() + 2) { [weak self] in
             self?.showToast = false
         }
-    }
-
-    func getEmotionFromFilter(_ filter: String) -> String {
-        if filter == "全部" { return "全部" }
-        return filter.components(separatedBy: " ").last ?? filter
     }
 }
 
