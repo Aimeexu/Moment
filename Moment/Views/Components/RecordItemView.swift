@@ -98,10 +98,10 @@ struct RecordItemView: View {
                         endPoint: .bottomTrailing
                     )
                 )
-                .frame(width: 50, height: 50)
+                .frame(width: 100, height: 100)
                 .overlay(
                     Text(record.emotion.emoji)
-                        .font(.system(size: 24))
+                        .font(.system(size: 48))
                 )
 
             // Content
@@ -150,11 +150,9 @@ struct RecordItemView: View {
                         .buttonStyle(PlainButtonStyle())
                     }
 
-                    // Images placeholder
-                    ForEach(0..<min(record.imageURLs.count, 3), id: \.self) { _ in
-                        RoundedRectangle(cornerRadius: 12)
-                            .fill(Color(hex: "c8f7e4").opacity(0.5))
-                            .frame(width: 50, height: 50)
+                    // Images
+                    if !record.imageURLs.isEmpty {
+                        RecordImagesGrid(imageURLs: record.imageURLs)
                     }
                 }
 
@@ -199,3 +197,140 @@ struct RecordItemView: View {
     }
 }
 
+
+// 记录图片缩略图组件
+struct RecordImageThumbnail: View {
+    let imageURL: URL
+    @State private var image: UIImage?
+    @State private var isLoading: Bool = true
+    @State private var loadFailed: Bool = false
+    
+    var body: some View {
+        RoundedRectangle(cornerRadius: 12)
+            .fill(Color(hex: "f5f5f5"))
+            .overlay(
+                Group {
+                    if let image = image {
+                        Image(uiImage: image)
+                            .resizable()
+                            .aspectRatio(contentMode: .fill)
+                            .clipped()
+                    } else if isLoading {
+                        ProgressView()
+                            .scaleEffect(0.8)
+                            .tint(Color(hex: "a78bfa"))
+                    } else {
+                        VStack(spacing: 4) {
+                            Image(systemName: loadFailed ? "exclamationmark.triangle" : "photo")
+                                .font(.system(size: 24))
+                                .foregroundColor(loadFailed ? Color(hex: "f5a5d1") : Color(hex: "b8b8b8"))
+                            
+                            if loadFailed {
+                                Text("加载失败")
+                                    .font(.system(size: 10))
+                                    .foregroundColor(Color(hex: "b8b8b8"))
+                            }
+                        }
+                    }
+                }
+            )
+            .clipShape(RoundedRectangle(cornerRadius: 12))
+            .shadow(
+                color: Color.black.opacity(0.1),
+                radius: 4,
+                x: 0,
+                y: 2
+            )
+            .onAppear {
+                loadImage()
+            }
+    }
+    
+    private func loadImage() {
+        print("🖼️ Loading image from: \(imageURL.absoluteString)")
+        print("🖼️ File path: \(imageURL.path)")
+        print("🖼️ URL scheme: \(imageURL.scheme ?? "no scheme")")
+        
+        DispatchQueue.global(qos: .userInitiated).async {
+            do {
+                // Check if file exists
+                let fileExists = FileManager.default.fileExists(atPath: imageURL.path)
+                print("🖼️ File exists: \(fileExists)")
+                
+                guard fileExists else {
+                    print("❌ Image file not found at path: \(imageURL.path)")
+                    // List directory contents for debugging
+                    let parentDir = imageURL.deletingLastPathComponent()
+                    if let contents = try? FileManager.default.contentsOfDirectory(atPath: parentDir.path) {
+                        print("📁 Directory contents: \(contents)")
+                    }
+                    DispatchQueue.main.async {
+                        self.isLoading = false
+                        self.loadFailed = true
+                    }
+                    return
+                }
+                
+                print("✅ Image file exists, loading data...")
+                let imageData = try Data(contentsOf: imageURL)
+                print("✅ Image data loaded, size: \(imageData.count) bytes")
+                
+                if let uiImage = UIImage(data: imageData) {
+                    print("✅ UIImage created successfully, size: \(uiImage.size)")
+                    DispatchQueue.main.async {
+                        self.image = uiImage
+                        self.isLoading = false
+                    }
+                } else {
+                    print("❌ Failed to create UIImage from data")
+                    DispatchQueue.main.async {
+                        self.isLoading = false
+                        self.loadFailed = true
+                    }
+                }
+            } catch {
+                print("❌ Failed to load image from \(imageURL): \(error)")
+                DispatchQueue.main.async {
+                    self.isLoading = false
+                    self.loadFailed = true
+                }
+            }
+        }
+    }
+}
+
+// 记录图片网格布局组件
+struct RecordImagesGrid: View {
+    let imageURLs: [URL]
+    
+    var body: some View {
+        VStack(spacing: 8) {
+            if imageURLs.count == 1 {
+                // 单张图片：占屏幕宽度的2/3
+                RecordImageThumbnail(imageURL: imageURLs[0])
+                    .aspectRatio(4/3, contentMode: .fit)
+                    .frame(maxWidth: .infinity)
+                    .frame(maxWidth: 250) // 限制最大宽度
+            } else if imageURLs.count > 1 {
+                // 多张图片：一行两张
+                LazyVGrid(columns: [
+                    GridItem(.flexible(), spacing: 8),
+                    GridItem(.flexible(), spacing: 8)
+                ], spacing: 8) {
+                    ForEach(Array(imageURLs.enumerated()), id: \.offset) { index, imageURL in
+                        RecordImageThumbnail(imageURL: imageURL)
+                            .aspectRatio(4/3, contentMode: .fit)
+                    }
+                }
+            }
+        }
+        .onAppear {
+            print("🎯 RecordImagesGrid appeared with \(imageURLs.count) images")
+            for (index, url) in imageURLs.enumerated() {
+                print("🎯 Image \(index): \(url.absoluteString)")
+                print("🎯 Image \(index) path: \(url.path)")
+                print("🎯 Image \(index) file exists: \(FileManager.default.fileExists(atPath: url.path))")
+            }
+        }
+    }
+}

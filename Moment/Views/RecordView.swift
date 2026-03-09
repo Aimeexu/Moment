@@ -23,7 +23,7 @@ struct RecordView: View {
                 RecordHeaderView(
                     onBack: { viewModel.goHome() },
                     onSave: { viewModel.saveRecord() },
-                    canSave: !viewModel.textContent.isEmpty || viewModel.isRecording || viewModel.recordingDuration > 0
+                    canSave: viewModel.canSave
                 )
 
                 // Emotion Show
@@ -41,10 +41,10 @@ struct RecordView: View {
                                     endPoint: .bottomTrailing
                                 )
                             )
-                            .frame(width: 100, height: 100)
+                            .frame(width: 200, height: 200)
                             .overlay(
                                 Text(emotion.emoji)
-                                    .font(.system(size: 50))
+                                    .font(.system(size: 100))
                             )
                             .shadow(
                                 color: Color(hex: "a78bfa").opacity(0.12),
@@ -131,9 +131,9 @@ struct RecordHeaderView: View {
 
             Spacer()
 
-            Text("记录你的心情时刻")
+            Text("记录此刻心情")
                 .font(.system(size: 15, weight: .semibold))
-                .foregroundColor(Color(hex: "5a5a5a"))
+                .foregroundColor(Color(hex: "333333"))
 
             Spacer()
 
@@ -422,6 +422,7 @@ struct TextPanelView: View {
 struct ImagePanelView: View {
     @ObservedObject var viewModel: AppViewModel
     @State private var showToast: Bool = false
+    @State private var toastMessage: String = ""
     @State private var showImagePicker: Bool = false
     @State private var showActionSheet: Bool = false
     @State private var sourceType: UIImagePickerController.SourceType = .photoLibrary
@@ -457,6 +458,20 @@ struct ImagePanelView: View {
                     )
                 }
                 .buttonStyle(PlainButtonStyle())
+                
+                // Test button for debugging
+                Button(action: { addTestImage() }) {
+                    Text("添加测试图片")
+                        .font(.system(size: 12, weight: .semibold))
+                        .foregroundColor(Color(hex: "a78bfa"))
+                        .padding(.horizontal, 16)
+                        .padding(.vertical, 8)
+                        .background(
+                            Capsule()
+                                .stroke(Color(hex: "a78bfa").opacity(0.3), lineWidth: 1)
+                        )
+                }
+                .buttonStyle(PlainButtonStyle())
             } else {
                 // 已选择图片状态
                 VStack(spacing: 12) {
@@ -466,6 +481,7 @@ struct ImagePanelView: View {
                             ImageThumbnailView(
                                 imageURL: imageURL,
                                 onRemove: {
+                                    print("🗑️ [ImagePanel] Removing image at index \(index): \(imageURL.absoluteString)")
                                     viewModel.removeImage(at: index)
                                 }
                             )
@@ -507,11 +523,19 @@ struct ImagePanelView: View {
                 }
             }
         }
+        .onAppear {
+            print("🎯 [ImagePanel] Panel appeared with \(viewModel.selectedImages.count) images")
+            for (index, url) in viewModel.selectedImages.enumerated() {
+                print("🎯 [ImagePanel] Image \(index): \(url.absoluteString)")
+                print("🎯 [ImagePanel] Image \(index) path: \(url.path)")
+                print("🎯 [ImagePanel] Image \(index) file exists: \(FileManager.default.fileExists(atPath: url.path))")
+            }
+        }
         .actionSheet(isPresented: $showActionSheet) {
             ActionSheet(
                 title: Text("选择图片"),
                 buttons: [
-                    .default(Text("📷 拍照")) {
+                    .default(Text("� 拍照")) {
                         if UIImagePickerController.isSourceTypeAvailable(.camera) {
                             sourceType = .camera
                             showImagePicker = true
@@ -535,33 +559,99 @@ struct ImagePanelView: View {
                 }
             )
         }
-        .toast(isShowing: $showToast, message: "图片已添加")
+        .toast(isShowing: $showToast, message: toastMessage)
     }
     
     private func saveImageAndAddToSelection(_ image: UIImage) {
+        print("🖼️ [ImagePanel] Starting to save image...")
+        
         // 保存图片到文档目录
         guard let imageData = image.jpegData(compressionQuality: 0.8) else {
+            print("❌ [ImagePanel] Failed to convert image to JPEG data")
             showToastMessage("图片处理失败")
             return
         }
         
         let documentsPath = FileManager.default.urls(for: .documentDirectory, in: .userDomainMask)[0]
+        print("🖼️ [ImagePanel] Documents path: \(documentsPath.path)")
+        
+        // 确保目录存在
+        do {
+            try FileManager.default.createDirectory(at: documentsPath, withIntermediateDirectories: true, attributes: nil)
+        } catch {
+            print("❌ [ImagePanel] Failed to create directory: \(error)")
+            showToastMessage("创建目录失败")
+            return
+        }
+        
         let imageURL = documentsPath.appendingPathComponent("image_\(UUID().uuidString).jpg")
+        print("🖼️ [ImagePanel] Saving image to: \(imageURL.absoluteString)")
         
         do {
             try imageData.write(to: imageURL)
-            viewModel.addImage(imageURL)
-            showToastMessage("图片已添加")
+            print("✅ [ImagePanel] Image saved successfully")
+            
+            // Verify file was created
+            let fileExists = FileManager.default.fileExists(atPath: imageURL.path)
+            print("🖼️ [ImagePanel] File exists after save: \(fileExists)")
+            
+            if fileExists {
+                viewModel.addImage(imageURL)
+                showToastMessage("图片已添加")
+                print("✅ [ImagePanel] Image added to viewModel, total images: \(viewModel.selectedImages.count)")
+            } else {
+                print("❌ [ImagePanel] File was not created successfully")
+                showToastMessage("图片保存验证失败")
+            }
         } catch {
-            print("Failed to save image: \(error)")
-            showToastMessage("图片保存失败")
+            print("❌ [ImagePanel] Failed to save image: \(error)")
+            showToastMessage("图片保存失败: \(error.localizedDescription)")
         }
     }
     
     private func showToastMessage(_ message: String) {
-        // 这里可以通过viewModel显示toast，或者使用本地状态
-        // 为了简化，我们使用本地toast状态
+        toastMessage = message
         showToast = true
+        // 2秒后自动隐藏toast
+        DispatchQueue.main.asyncAfter(deadline: .now() + 2) {
+            showToast = false
+        }
+    }
+    
+    private func addTestImage() {
+        print("🧪 [ImagePanel] Creating test image...")
+        let testImage = createTestImage()
+        saveImageAndAddToSelection(testImage)
+    }
+    
+    private func createTestImage() -> UIImage {
+        let size = CGSize(width: 300, height: 200)
+        let renderer = UIGraphicsImageRenderer(size: size)
+        
+        return renderer.image { context in
+            // Background gradient
+            let colors = [UIColor(red: 0.65, green: 0.55, blue: 0.98, alpha: 1.0).cgColor,
+                         UIColor(red: 0.96, green: 0.65, blue: 0.82, alpha: 1.0).cgColor]
+            let gradient = CGGradient(colorsSpace: CGColorSpaceCreateDeviceRGB(), colors: colors as CFArray, locations: nil)!
+            context.cgContext.drawLinearGradient(gradient, start: CGPoint.zero, end: CGPoint(x: size.width, y: size.height), options: [])
+            
+            // Text
+            let text = "测试图片"
+            let attributes: [NSAttributedString.Key: Any] = [
+                .font: UIFont.systemFont(ofSize: 24, weight: .bold),
+                .foregroundColor: UIColor.white
+            ]
+            
+            let textSize = text.size(withAttributes: attributes)
+            let textRect = CGRect(
+                x: (size.width - textSize.width) / 2,
+                y: (size.height - textSize.height) / 2,
+                width: textSize.width,
+                height: textSize.height
+            )
+            
+            text.draw(in: textRect, withAttributes: attributes)
+        }
     }
 }
 
@@ -570,6 +660,8 @@ struct ImageThumbnailView: View {
     let imageURL: URL
     let onRemove: () -> Void
     @State private var image: UIImage?
+    @State private var isLoading: Bool = true
+    @State private var loadFailed: Bool = false
     
     var body: some View {
         ZStack(alignment: .topTrailing) {
@@ -583,9 +675,22 @@ struct ImageThumbnailView: View {
                                 .resizable()
                                 .aspectRatio(contentMode: .fill)
                                 .clipped()
-                        } else {
+                        } else if isLoading {
                             ProgressView()
                                 .scaleEffect(0.8)
+                                .tint(Color(hex: "a78bfa"))
+                        } else {
+                            VStack(spacing: 4) {
+                                Image(systemName: loadFailed ? "exclamationmark.triangle" : "photo")
+                                    .font(.system(size: 16))
+                                    .foregroundColor(loadFailed ? Color(hex: "f5a5d1") : Color(hex: "b8b8b8"))
+                                
+                                if loadFailed {
+                                    Text("加载失败")
+                                        .font(.system(size: 8))
+                                        .foregroundColor(Color(hex: "b8b8b8"))
+                                }
+                            }
                         }
                     }
                 )
@@ -610,11 +715,52 @@ struct ImageThumbnailView: View {
     }
     
     private func loadImage() {
+        print("🖼️ [RecordView] Loading image from: \(imageURL.absoluteString)")
+        print("🖼️ [RecordView] File path: \(imageURL.path)")
+        print("🖼️ [RecordView] URL scheme: \(imageURL.scheme ?? "no scheme")")
+        
         DispatchQueue.global(qos: .userInitiated).async {
-            if let imageData = try? Data(contentsOf: imageURL),
-               let uiImage = UIImage(data: imageData) {
+            do {
+                // Check if file exists
+                let fileExists = FileManager.default.fileExists(atPath: imageURL.path)
+                print("🖼️ [RecordView] File exists: \(fileExists)")
+                
+                guard fileExists else {
+                    print("❌ [RecordView] Image file not found at path: \(imageURL.path)")
+                    // List directory contents for debugging
+                    let parentDir = imageURL.deletingLastPathComponent()
+                    if let contents = try? FileManager.default.contentsOfDirectory(atPath: parentDir.path) {
+                        print("📁 [RecordView] Directory contents: \(contents)")
+                    }
+                    DispatchQueue.main.async {
+                        self.isLoading = false
+                        self.loadFailed = true
+                    }
+                    return
+                }
+                
+                print("✅ [RecordView] Image file exists, loading data...")
+                let imageData = try Data(contentsOf: imageURL)
+                print("✅ [RecordView] Image data loaded, size: \(imageData.count) bytes")
+                
+                if let uiImage = UIImage(data: imageData) {
+                    print("✅ [RecordView] UIImage created successfully, size: \(uiImage.size)")
+                    DispatchQueue.main.async {
+                        self.image = uiImage
+                        self.isLoading = false
+                    }
+                } else {
+                    print("❌ [RecordView] Failed to create UIImage from data")
+                    DispatchQueue.main.async {
+                        self.isLoading = false
+                        self.loadFailed = true
+                    }
+                }
+            } catch {
+                print("❌ [RecordView] Failed to load image from \(imageURL): \(error)")
                 DispatchQueue.main.async {
-                    self.image = uiImage
+                    self.isLoading = false
+                    self.loadFailed = true
                 }
             }
         }

@@ -88,7 +88,55 @@ class AppViewModel: NSObject, ObservableObject {
     
     func setModelContext(_ context: ModelContext) {
         self.modelContext = context
+        migrateImagePaths() // Migrate old absolute paths to filenames
         fetchRecords()
+    }
+    
+    // Migrate old absolute image paths to filenames
+    private func migrateImagePaths() {
+        guard let context = modelContext else { return }
+        
+        let descriptor = FetchDescriptor<MoodRecord>()
+        
+        do {
+            let allRecords = try context.fetch(descriptor)
+            var needsSave = false
+            
+            for record in allRecords {
+                var updatedImageStrings: [String] = []
+                var hasChanges = false
+                
+                for imageString in record.imageURLStrings {
+                    // Check if it's an absolute URL that needs migration
+                    if imageString.contains("/Documents/") && imageString.contains("file://") {
+                        // Extract filename from absolute path
+                        if let url = URL(string: imageString) {
+                            let filename = url.lastPathComponent
+                            updatedImageStrings.append(filename)
+                            hasChanges = true
+                            print("🔄 Migrating image path: \(imageString) -> \(filename)")
+                        } else {
+                            updatedImageStrings.append(imageString)
+                        }
+                    } else {
+                        // Already a filename or relative path, keep as is
+                        updatedImageStrings.append(imageString)
+                    }
+                }
+                
+                if hasChanges {
+                    record.imageURLStrings = updatedImageStrings
+                    needsSave = true
+                }
+            }
+            
+            if needsSave {
+                try context.save()
+                print("✅ Image path migration completed")
+            }
+        } catch {
+            print("❌ Failed to migrate image paths: \(error)")
+        }
     }
     
     func fetchRecords() {
@@ -110,6 +158,9 @@ class AppViewModel: NSObject, ObservableObject {
     func addImage(_ imageURL: URL) {
         if selectedImages.count < 9 {
             selectedImages.append(imageURL)
+            print("Image added successfully: \(imageURL.absoluteString)")
+        } else {
+            print("Cannot add image: maximum limit reached")
         }
     }
     
@@ -129,6 +180,82 @@ class AppViewModel: NSObject, ObservableObject {
         }
         selectedImages.removeAll()
     }
+    
+    // Helper function to convert URL to filename for storage
+    private func getFilenameFromURL(_ url: URL) -> String {
+        return url.lastPathComponent
+    }
+    // MARK: - Test Data (for debugging)
+    
+    func addTestRecord() {
+        guard let context = modelContext else { return }
+        
+        // Create a test image in the documents directory
+        let documentsPath = FileManager.default.urls(for: .documentDirectory, in: .userDomainMask)[0]
+        let filename = "test_image_\(UUID().uuidString).jpg"
+        let testImageURL = documentsPath.appendingPathComponent(filename)
+        
+        // Create a simple test image
+        let testImage = createTestImage()
+        if let imageData = testImage.jpegData(compressionQuality: 0.8) {
+            do {
+                try imageData.write(to: testImageURL)
+                print("✅ Test image created at: \(testImageURL.absoluteString)")
+            } catch {
+                print("❌ Failed to create test image: \(error)")
+                return
+            }
+        }
+        
+        let testRecord = MoodRecord(
+            emotionName: "开心",
+            emotionEmoji: "😊",
+            date: Date(),
+            textContent: "这是一个测试记录，用来验证图片显示功能",
+            imageURLStrings: [filename], // Store only filename
+            tagNames: ["测试"],
+            tagIcons: ["🧪"]
+        )
+        
+        context.insert(testRecord)
+        
+        do {
+            try context.save()
+            fetchRecords()
+            print("✅ Test record created successfully with filename: \(filename)")
+        } catch {
+            print("❌ Failed to save test record: \(error)")
+        }
+    }
+    
+    private func createTestImage() -> UIImage {
+        let size = CGSize(width: 300, height: 200)
+        let renderer = UIGraphicsImageRenderer(size: size)
+        
+        return renderer.image { context in
+            // Background
+            UIColor(red: 0.65, green: 0.55, blue: 0.98, alpha: 1.0).setFill()
+            context.fill(CGRect(origin: .zero, size: size))
+            
+            // Text
+            let text = "Test Image"
+            let attributes: [NSAttributedString.Key: Any] = [
+                .font: UIFont.systemFont(ofSize: 24, weight: .bold),
+                .foregroundColor: UIColor.white
+            ]
+            
+            let textSize = text.size(withAttributes: attributes)
+            let textRect = CGRect(
+                x: (size.width - textSize.width) / 2,
+                y: (size.height - textSize.height) / 2,
+                width: textSize.width,
+                height: textSize.height
+            )
+            
+            text.draw(in: textRect, withAttributes: attributes)
+        }
+    }
+
     // MARK: - Actions
     
     func selectEmotion(_ emotion: Emotion) {
@@ -229,7 +356,18 @@ class AppViewModel: NSObject, ObservableObject {
     }
 
     func saveRecord() {
-        guard let emotion = selectedEmotion, let context = modelContext else { return }
+        guard let emotion = selectedEmotion, let context = modelContext else { 
+            print("Cannot save record: missing emotion or context")
+            return 
+        }
+
+        print("Saving record with \(selectedImages.count) images")
+        
+        // Convert URLs to filenames for storage
+        let imageFilenames = selectedImages.map { getFilenameFromURL($0) }
+        for (index, filename) in imageFilenames.enumerated() {
+            print("Image \(index): \(filename)")
+        }
 
         let record = MoodRecord(
             emotionName: emotion.name,
@@ -238,7 +376,7 @@ class AppViewModel: NSObject, ObservableObject {
             textContent: textContent.isEmpty ? nil : textContent,
             voiceURLString: currentRecordingURL?.absoluteString,
             voiceDuration: recordingDuration > 0 ? recordingDuration : nil,
-            imageURLStrings: selectedImages.map { $0.absoluteString },
+            imageURLStrings: imageFilenames, // Store filenames instead of full URLs
             bookmarkURLString: bookmarkURL.isEmpty ? nil : bookmarkURL,
             bookmarkTitle: bookmarkTitle.isEmpty ? nil : bookmarkTitle,
             tagNames: selectedTags.map { $0.name },
@@ -251,11 +389,12 @@ class AppViewModel: NSObject, ObservableObject {
             try context.save()
             fetchRecords()
             showToastMessage("记录已保存")
+            print("Record saved successfully with \(record.imageURLStrings.count) image filenames")
             DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) { [weak self] in
                 self?.goHome()
             }
         } catch {
-            showToastMessage("保存失败")
+            showToastMessage("保存失败: \(error.localizedDescription)")
             print("Failed to save record: \(error)")
         }
     }

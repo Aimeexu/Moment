@@ -9,51 +9,67 @@ import SwiftUI
 
 struct HomeView: View {
     @ObservedObject var viewModel: AppViewModel
+    @State private var searchText: String = ""
 
     private let columns = [
-        GridItem(.flexible(), spacing: 0),
-        GridItem(.flexible(), spacing: 0),
-        GridItem(.flexible(), spacing: 0)
+        GridItem(.flexible(), spacing: 12),
+        GridItem(.flexible(), spacing: 12),
+        GridItem(.flexible(), spacing: 12)
     ]
 
     var body: some View {
         ZStack {
-            // Background
-            BackgroundDecorations()
-                .ignoresSafeArea()
+            // Background gradient
+            LinearGradient(
+                colors: [
+                    Color(hex: "FEF5E5"),
+                    Color(hex: "E8F5E8")
+                ],
+                startPoint: .topLeading,
+                endPoint: .bottomTrailing
+            )
+            .ignoresSafeArea()
 
             VStack(spacing: 0) {
-                // Header
-                VStack(spacing: 8) {
-                    Text("情绪云朵")
-                        .font(.system(size: 28, weight: .bold))
-                        .foregroundStyle(
-                            LinearGradient(
-                                colors: [Color(hex: "a78bfa"), Color(hex: "f5a5d1")],
-                                startPoint: .leading,
-                                endPoint: .trailing
-                            )
+                // Search bar
+                VStack(spacing: 20) {
+                    HStack {
+
+                    Text("记录此刻心情")
+                            .frame(width: .infinity, alignment: .center)
+                        .font(.system(size: 16))
+                        .foregroundColor(Color(hex: "333333"))
+                        .padding(.horizontal, 20)
+                        .padding(.vertical, 20)
+                        .background(
+                            RoundedRectangle(cornerRadius: 25)
+                                .fill(Color.white.opacity(0.9))
+                                .shadow(
+                                    color: Color.black.opacity(0.05),
+                                    radius: 8,
+                                    x: 0,
+                                    y: 2
+                                )
                         )
 
-                    Text("记录此刻的心情，温暖你的每一天")
-                        .font(.system(size: 13, weight: .medium))
-                        .foregroundColor(Color(hex: "8b8b8b"))
-                        .tracking(0.5)
+
+                    }
+                    .padding(.horizontal, 20)
                 }
-                .padding(.top, 50)
-                .padding(.bottom, 30)
+                .padding(.top, 60)
+                .padding(.bottom, 46)
 
                 // Emotion Grid
                 ScrollView(showsIndicators: false) {
-                    LazyVGrid(columns: columns, spacing: 0) {
+                    LazyVGrid(columns: columns, spacing: 16) {
                         ForEach(Emotion.allEmotions) { emotion in
                             EmotionItemView(emotion: emotion) {
                                 viewModel.selectEmotion(emotion)
                             }
                         }
                     }
-                    .padding(.horizontal, 12)
-                    .padding(.bottom, 100)
+                    .padding(.horizontal, 20)
+                    .padding(.bottom, 120)
                 }
             }
         }

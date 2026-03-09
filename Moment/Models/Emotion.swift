@@ -11,16 +11,25 @@ struct Emotion: Identifiable, Equatable {
     let id = UUID()
     let name: String
     let emoji: String
+    let imageName: String
+    let backgroundColor: String
+    
+    init(name: String, emoji: String, imageName: String, backgroundColor: String) {
+        self.name = name
+        self.emoji = emoji
+        self.imageName = imageName
+        self.backgroundColor = "#00000000"
+    }
 
     static let allEmotions: [Emotion] = [
-        Emotion(name: "开心", emoji: "😊"),
-        Emotion(name: "幸福", emoji: "🥰"),
-        Emotion(name: "自豪", emoji: "😎"),
-        Emotion(name: "疲惫", emoji: "😩"),
-        Emotion(name: "难过", emoji: "😢"),
-        Emotion(name: "生气", emoji: "😠"),
-        Emotion(name: "焦虑", emoji: "😰"),
-        Emotion(name: "低落", emoji: "😔"),
-        Emotion(name: "平静", emoji: "😌")
+        Emotion(name: "Happy", emoji: "😊", imageName: "Happy", backgroundColor: "FBF8F0"),
+        Emotion(name: "Loved", emoji: "🥰", imageName: "Loved", backgroundColor: "FBF8F0"),
+        Emotion(name: "Proud", emoji: "😎", imageName: "Proud", backgroundColor: "FBF8F0"),
+        Emotion(name: "Tired", emoji: "😩", imageName: "Tired", backgroundColor: "FBF8F0"),
+        Emotion(name: "Sad", emoji: "😢", imageName: "Sad", backgroundColor: "FBF8F0"),
+        Emotion(name: "Angry", emoji: "😠", imageName: "Angry", backgroundColor: "FBF8F0"),
+        Emotion(name: "Anxious", emoji: "😰", imageName: "Anxious", backgroundColor: "FBF8F0"),
+        Emotion(name: "Down", emoji: "😔", imageName: "Down", backgroundColor: "FBF8F0"),
+        Emotion(name: "Calm", emoji: "😌", imageName: "Calm", backgroundColor: "FBF8F0")
     ]
 }
